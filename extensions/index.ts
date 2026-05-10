@@ -47,7 +47,11 @@ interface PiCommandContext {
 const PROVIDER_ID = "lemonade";
 const PROVIDER_LABEL = "Lemonade";
 const BEACON_PORT = 13305;
-const HTTP_FALLBACK_PORTS = [8000, 1234, 9000, 8080];
+// Lemonade's default HTTP port is 13305 (same port as the UDP beacon, but TCP).
+// Listed first so the local-fallback scan finds it immediately. Other ports
+// covered for users running a custom --port.
+const HTTP_FALLBACK_PORTS = [13305, 8000, 1234, 9000, 8080];
+const DEFAULT_HTTP_URL = "http://localhost:13305";
 const CREDS_TTL_MS = 24 * 60 * 60 * 1000;
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -126,9 +130,16 @@ function buildBaseUrl(raw: string): string {
   if (!/^https?:\/\//i.test(url)) {
     url = `http://${url}`;
   }
-  // Beacons publish "http://host:port/api/v1/" — strip trailing /api/vN/
-  url = url.replace(/\/api\/v\d+\/?$/, "").replace(/\/+$/, "");
-  return url;
+  // Strip any path the user (or the beacon) appended. Order matters — strip
+  // the most specific prefix first.
+  //   http://host:port/api/v1/  → http://host:port
+  //   http://host:port/api/v0   → http://host:port
+  //   http://host:port/v1       → http://host:port (user pasted from OpenAI URL)
+  //   http://host:port/api      → http://host:port
+  for (const re of [/\/api\/v\d+\/?$/i, /\/v\d+\/?$/i, /\/api\/?$/i]) {
+    url = url.replace(re, "");
+  }
+  return url.replace(/\/+$/, "");
 }
 
 function authHeaders(apiKey?: string): Record<string, string> {
@@ -173,7 +184,15 @@ function discoverViaBeacon(timeoutMs: number, localOnly: boolean): Promise<Beaco
     };
 
     try {
-      sock = dgram.createSocket({ type: "udp4", reuseAddr: true });
+      // reuseAddr → SO_REUSEADDR; reusePort → SO_REUSEPORT (Node 18+).
+      // Both are required on macOS to co-bind with another listener (tray,
+      // `lemonade scan`). The peer must also set them, so this only works
+      // once the lemonade tray is patched to set SO_REUSEPORT before bind.
+      sock = dgram.createSocket({
+        type: "udp4",
+        reuseAddr: true,
+        reusePort: true,
+      } as Parameters<typeof dgram.createSocket>[0]);
       sock.on("error", finish);
       sock.on("message", (msg: Buffer, rinfo: { address: string }) => {
         if (localOnly && rinfo.address !== "127.0.0.1") return;
