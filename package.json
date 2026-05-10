@@ -1,0 +1,31 @@
+{
+  "name": "@lemonade/lemonade-provider",
+  "version": "1.0.0",
+  "description": "Pi.dev extension for Lemonade local LLM server. Adds Lemonade as a provider with built-in /login, UDP beacon discovery, and model administration.",
+  "type": "module",
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "lemonade",
+    "llm",
+    "local-ai",
+    "local-llm"
+  ],
+  "license": "MIT",
+  "author": "Lemonade SDK",
+  "homepage": "https://github.com/lemonade-sdk/lemonade-pi-plugin",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lemonade-sdk/lemonade-pi-plugin.git"
+  },
+  "bugs": {
+    "url": "https://github.com/lemonade-sdk/lemonade-pi-plugin/issues"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-ai": "*"
+  },
+  "pi": {
+    "extensions": ["extensions/index.ts"]
+  }
+}
