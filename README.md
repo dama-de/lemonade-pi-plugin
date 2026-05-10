@@ -2,7 +2,7 @@
 
 Pi.dev extension that registers [Lemonade](https://github.com/lemonade-sdk/lemonade) — a local LLM server with GPU/NPU acceleration — as a custom provider in Pi.
 
-After install, type `/login` in Pi and pick **Lemonade**. The extension auto-discovers your server via Lemonade's UDP beacon, lets you confirm or override the URL, optionally collects an API key, then registers every model your server exposes.
+After install, type `/login` in Pi then `subscription` and pick **Lemonade**, lets you confirm or override the URL, optionally collects an API key, then registers every model your server exposes.
 
 ## Features
 
