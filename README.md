@@ -8,7 +8,7 @@ After install, type `/login` in Pi then `subscription` and pick **Lemonade**, le
 
 - **Built-in `/login` integration** — appears as a "Lemonade" choice in Pi's OAuth selector. No custom slash commands needed.
 - **UDP beacon discovery** — listens for Lemonade's broadcast on port `13305` (the same channel `lemonade scan` uses) and finds local *and* LAN servers automatically.
-- **HTTP fallback** — scans `localhost:8000`, `1234`, `9000`, `8080` if no beacon arrives.
+- **HTTP fallback** — scans `localhost:13305`, `1234`, `9000`, `8080` if no beacon arrives.
 - **API key support** — prompted during login, stored by Pi in `~/.pi/agent/auth.json`, sent as `Authorization: Bearer …` on every request.
 - **Model admin** — `/lemonade` for status, list, load, unload, pull, delete, refresh, discover.
 
@@ -44,15 +44,15 @@ pi install git:github.com/lemonade-sdk/lemonade-pi-plugin@main
 2. Start Pi: `pi`
 3. Type `/login` → pick **Lemonade** from the selector.
 4. The extension prompts you in order:
-   - **Server selection** — if one server was found, press Enter to accept; if multiple, type the number; if none, type a URL (default: `http://localhost:8000`).
-   - **API key** — press Enter to skip, or paste your key. Used only if your server sets `LEMONADE_API_KEY`.
+   - **Server selection** — if one server was found, press Enter to accept; if multiple, type the number; if none, type a URL (default: `http://localhost:13305`).
+   - **API key** — **Do not leave this blank.** Enter a dummy value (e.g., `lemonade`) or paste your actual key. Even if your local server does not enforce authentication, the underlying Pi client wrapper requires a non-empty string to pass its internal validation rules.
 5. After verification, the extension registers every model the server reports, and it appears in Pi's model picker under "Lemonade".
 
 ### Discovery details
 
 Lemonade broadcasts a JSON beacon every ~1s on UDP `13305`:
 ```json
-{"service":"lemonade","hostname":"my-host","url":"http://192.168.1.5:8000/api/v1/"}
+{"service":"lemonade","hostname":"my-host","url":"http://192.168.1.5:13305/api/v1/"}
 ```
 The extension binds to `0.0.0.0:13305` with `SO_REUSEADDR` (so it coexists with `lemonade scan` running in parallel) and listens for ~2.5 seconds during login. Both loopback and LAN broadcasts are captured.
 
@@ -103,7 +103,7 @@ lemonade-pi-plugin/
 
 **"Lemonade" doesn't appear in /login.** Restart Pi (or `/reload`). Confirm the symlink exists: `ls -la ~/.pi/agent/extensions/lemonade-provider`.
 
-**No servers discovered.** Confirm `lemond` is running: `curl http://localhost:8000/api/v1/health`. Confirm port 13305 isn't blocked by a local firewall (UDP). The HTTP fallback should still find a localhost server even if the beacon is blocked.
+**No servers discovered.** Confirm `lemond` is running: `curl http://localhost:13305/api/v1/health`. Confirm port 13305 isn't blocked by a local firewall (UDP). The HTTP fallback should still find a localhost server even if the beacon is blocked.
 
 **Models don't appear in the picker after login.** Run `/lemonade refresh`. If still empty, check `/lemonade models` — if the server reports models there but Pi doesn't show them, your provider model list might be stale; a full Pi restart will re-trigger the OAuth refresh.
 
