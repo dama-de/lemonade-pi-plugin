@@ -22,7 +22,9 @@
     "url": "https://github.com/lemonade-sdk/lemonade-pi-plugin/issues"
   },
   "scripts": {
-    "build": "tsc --noEmit"
+    "build": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": "*",
@@ -35,6 +37,8 @@
   },
   "devDependencies": {
     "@types/node": "^25.9.1",
-    "typescript": "^6.0.3"
+    "@vitest/coverage-v8": "^4.1.7",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.7"
   }
 }

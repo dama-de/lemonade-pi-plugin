@@ -11,12 +11,15 @@
     "declarationMap": true,
     "sourceMap": true,
     "outDir": "./dist",
-    "rootDir": "./extensions",
+    "rootDir": ".",
     "lib": ["ES2022", "DOM"],
     "types": [
       "node"
     ]
   },
-  "include": ["extensions/**/*.ts"],
+  "include": [
+    "extensions/**/*.ts",
+    "tests/**/*.ts"
+  ],
   "exclude": ["node_modules", "dist", "scripts"]
 }
