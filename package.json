@@ -21,11 +21,20 @@
   "bugs": {
     "url": "https://github.com/lemonade-sdk/lemonade-pi-plugin/issues"
   },
+  "scripts": {
+    "build": "tsc --noEmit"
+  },
   "peerDependencies": {
-    "@earendil-works/pi-coding-agent": "*",
-    "@earendil-works/pi-ai": "*"
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*"
   },
   "pi": {
-    "extensions": ["extensions/index.ts"]
+    "extensions": [
+      "extensions/index.ts"
+    ]
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "typescript": "^6.0.3"
   }
 }
