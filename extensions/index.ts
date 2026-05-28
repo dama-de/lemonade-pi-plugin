@@ -16,33 +16,17 @@
  */
 
 import dgram from "node:dgram";
-import { promises as fs } from "node:fs";
+import {promises as fs} from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import type {ExtensionAPI} from "@earendil-works/pi-coding-agent";
+import type {OAuthCredentials, OAuthLoginCallbacks} from "@earendil-works/pi-ai";
 
-// Pi's ExtensionAPI shape — only the surface we actually use. Pi resolves the
-// real type at runtime via jiti; declaring a local interface keeps this file
-// type-checkable without the peerDependency installed in the extension dir.
-interface ExtensionAPI {
-  registerProvider(id: string, config: Record<string, unknown>): void;
-  unregisterProvider(id: string): void;
-  registerCommand(
-    name: string,
-    options: {
-      description?: string;
-      handler: (args: string, ctx: PiCommandContext) => Promise<void>;
-    },
-  ): void;
-}
-
-interface PiCommandContext {
-  ui: {
-    notify(message: string, level?: "info" | "warning" | "error"): void;
-    input?(prompt: string, placeholder?: string): Promise<string>;
-    select?<T>(prompt: string, options: T[]): Promise<T>;
-  };
-  signal?: AbortSignal;
-}
+/** Minimal surface of ExtensionAPI that this extension actually uses. */
+export type PiClient = Pick<
+    ExtensionAPI,
+    "registerProvider" | "unregisterProvider" | "registerCommand"
+>;
 
 const PROVIDER_ID = "lemonade";
 const PROVIDER_LABEL = "Lemonade";
@@ -73,18 +57,6 @@ interface LemonadeModelInfo {
   loaded?: boolean;
   size?: number;
   config?: Record<string, unknown>;
-}
-
-interface OAuthCredentials {
-  refresh: string;
-  access: string;
-  expires: number;
-}
-
-interface OAuthLoginCallbacks {
-  onAuth(params: { url: string }): void;
-  onDeviceCode(params: { userCode: string; verificationUri: string }): void;
-  onPrompt(params: { message: string }): Promise<string>;
 }
 
 interface CredsPayload {
@@ -298,7 +270,7 @@ function mapToProviderModel(m: LemonadeModelInfo) {
 // ─── Provider (re-)registration ─────────────────────────────────────────────
 
 async function registerLemonadeProvider(
-  pi: ExtensionAPI,
+    pi: PiClient,
   payload: CredsPayload | null,
   oauthBlock: unknown,
 ): Promise<number> {
@@ -332,7 +304,7 @@ async function registerLemonadeProvider(
 // ─── OAuth login flow (runs when user picks "Lemonade" in /login) ───────────
 
 async function oauthLogin(
-  pi: ExtensionAPI,
+    pi: PiClient,
   callbacks: OAuthLoginCallbacks,
   oauthBlock: unknown,
 ): Promise<OAuthCredentials> {
@@ -449,7 +421,7 @@ async function readStoredPayload(): Promise<CredsPayload | null> {
   return null;
 }
 
-function registerAdminCommand(pi: ExtensionAPI, oauthBlock: unknown) {
+function registerAdminCommand(pi: PiClient, oauthBlock: unknown) {
   pi.registerCommand("lemonade", {
     description: "Lemonade server administration (status, models, load/pull/delete)",
     handler: async (args: string, ctx: { ui: { notify(msg: string, level?: string): void } }) => {
@@ -643,7 +615,7 @@ async function postModelOp(
 
 // ─── Extension factory ──────────────────────────────────────────────────────
 
-export default async function lemonadeProvider(pi: ExtensionAPI) {
+export default async function lemonadeProvider(pi: PiClient) {
   const oauthBlock = {
     name: PROVIDER_LABEL,
     login: (callbacks: OAuthLoginCallbacks): Promise<OAuthCredentials> =>
