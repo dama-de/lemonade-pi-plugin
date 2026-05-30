@@ -22,7 +22,7 @@
     "url": "https://github.com/lemonade-sdk/lemonade-pi-plugin/issues"
   },
   "scripts": {
-    "build": "tsc --noEmit",
+    "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest"
   },

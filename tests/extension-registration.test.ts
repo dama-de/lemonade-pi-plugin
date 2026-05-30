@@ -32,7 +32,7 @@ describe("extension registration", () => {
         expect(config.oauth).toBeDefined();
     });
 
-    it("registers the admin command", async () => {
+    it("registers the /lemonade command", async () => {
         const pi = createMockPi();
 
         await lemonadeProvider(pi);
