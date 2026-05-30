@@ -19,7 +19,7 @@ import dgram from "node:dgram";
 import {promises as fs} from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import type {ExtensionAPI} from "@earendil-works/pi-coding-agent";
+import type {ExtensionAPI, ExtensionCommandContext} from "@earendil-works/pi-coding-agent";
 import type {OAuthCredentials, OAuthLoginCallbacks} from "@earendil-works/pi-ai";
 
 const PROVIDER_ID = "lemonade";
@@ -418,7 +418,7 @@ async function readStoredPayload(): Promise<CredsPayload | null> {
 function lemonadeCommand(pi: ExtensionAPI, oauthBlock: any) {
   return {
     description: "Lemonade server administration (status, models, load/pull/delete)",
-    handler: async (args: string, ctx: { ui: { notify(msg: string, level?: string): void } }) => {
+    handler: async (args: string, ctx: ExtensionCommandContext) => {
       const parts = args.trim().split(/\s+/).filter(Boolean);
       const cmd = (parts[0] ?? "").toLowerCase();
       const rest = parts.slice(1);
@@ -612,8 +612,7 @@ async function postModelOp(
 export default async function lemonadeProvider(pi: ExtensionAPI) {
   const oauthBlock = {
     name: PROVIDER_LABEL,
-    login: (callbacks: OAuthLoginCallbacks): Promise<OAuthCredentials> =>
-      oauthLogin(pi, callbacks, oauthBlock),
+    login: (callbacks: OAuthLoginCallbacks): Promise<OAuthCredentials> => oauthLogin(pi, callbacks, oauthBlock),
     refreshToken: async (creds: OAuthCredentials): Promise<OAuthCredentials> => {
       const payload = decodeCreds(creds);
       if (payload.baseUrl) {
