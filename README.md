@@ -83,21 +83,11 @@ The connection details (`baseUrl`, `apiKey`, `serverName`) are encoded as JSON i
 
 The Pi-side API call goes through Lemonade's OpenAI-compatible `/v1/chat/completions` endpoint. The extension uses `api: "openai-completions"` in the provider config.
 
-## Project layout
-
-```
-lemonade-pi-plugin/
-├── extensions/
-│   └── index.ts          Single-file extension (loaded by Pi via jiti)
-├── scripts/
-│   ├── install.sh        Symlink the repo into ~/.pi/agent/extensions/
-│   └── publish.sh        npm version bump + publish
-├── package.json          Pi package manifest (pi.extensions field)
-├── tsconfig.json
-└── README.md
-```
-
 `pi.extensions` in `package.json` tells Pi which file to load. No build step required — Pi loads `.ts` directly via [jiti](https://github.com/unjs/jiti).
+
+## Documentation
+
+- [Lemonade Server API](https://lemonade-server.ai/docs/api/)
 
 ## Troubleshooting
 
