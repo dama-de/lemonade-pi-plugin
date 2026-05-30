@@ -22,12 +22,6 @@ import path from "node:path";
 import type {ExtensionAPI} from "@earendil-works/pi-coding-agent";
 import type {OAuthCredentials, OAuthLoginCallbacks} from "@earendil-works/pi-ai";
 
-/** Minimal surface of ExtensionAPI that this extension actually uses. */
-export type PiClient = Pick<
-    ExtensionAPI,
-    "registerProvider" | "unregisterProvider" | "registerCommand"
->;
-
 const PROVIDER_ID = "lemonade";
 const PROVIDER_LABEL = "Lemonade";
 const BEACON_PORT = 13305;
@@ -270,7 +264,7 @@ function mapToProviderModel(m: LemonadeModelInfo) {
 // ─── Provider (re-)registration ─────────────────────────────────────────────
 
 async function registerLemonadeProvider(
-    pi: PiClient,
+    pi: ExtensionAPI,
   payload: CredsPayload | null,
   oauthBlock: unknown,
 ): Promise<number> {
@@ -304,7 +298,7 @@ async function registerLemonadeProvider(
 // ─── OAuth login flow (runs when user picks "Lemonade" in /login) ───────────
 
 async function oauthLogin(
-    pi: PiClient,
+    pi: ExtensionAPI,
   callbacks: OAuthLoginCallbacks,
   oauthBlock: unknown,
 ): Promise<OAuthCredentials> {
@@ -421,7 +415,7 @@ async function readStoredPayload(): Promise<CredsPayload | null> {
   return null;
 }
 
-function lemonadeCommand(pi: PiClient, oauthBlock: any) {
+function lemonadeCommand(pi: ExtensionAPI, oauthBlock: any) {
   return {
     description: "Lemonade server administration (status, models, load/pull/delete)",
     handler: async (args: string, ctx: { ui: { notify(msg: string, level?: string): void } }) => {
@@ -615,7 +609,7 @@ async function postModelOp(
 
 // ─── Extension factory ──────────────────────────────────────────────────────
 
-export default async function lemonadeProvider(pi: PiClient) {
+export default async function lemonadeProvider(pi: ExtensionAPI) {
   const oauthBlock = {
     name: PROVIDER_LABEL,
     login: (callbacks: OAuthLoginCallbacks): Promise<OAuthCredentials> =>

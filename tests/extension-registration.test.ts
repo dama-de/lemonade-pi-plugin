@@ -1,14 +1,7 @@
 import {beforeEach, describe, expect, it, vi} from "vitest";
-import type {PiClient} from "../extensions";
+import {mockDeep} from "vitest-mock-extended";
+import type {ExtensionAPI} from "@earendil-works/pi-coding-agent";
 import lemonadeProvider from "../extensions/index";
-
-function createMockPi(): PiClient {
-    return {
-        registerProvider: vi.fn(),
-        unregisterProvider: vi.fn(),
-        registerCommand: vi.fn(),
-    };
-}
 
 describe("extension registration", () => {
     beforeEach(() => {
@@ -16,7 +9,7 @@ describe("extension registration", () => {
     });
 
     it("registers the Lemonade provider on startup", async () => {
-        const pi = createMockPi();
+        const pi = mockDeep<ExtensionAPI>();
 
         await lemonadeProvider(pi);
 
@@ -33,7 +26,7 @@ describe("extension registration", () => {
     });
 
     it("registers the /lemonade command", async () => {
-        const pi = createMockPi();
+        const pi = mockDeep<ExtensionAPI>();
 
         await lemonadeProvider(pi);
 
@@ -46,7 +39,7 @@ describe("extension registration", () => {
     });
 
     it("the oauth block exposes login, refreshToken, and getApiKey", async () => {
-        const pi = createMockPi();
+        const pi = mockDeep<ExtensionAPI>();
 
         await lemonadeProvider(pi);
 
