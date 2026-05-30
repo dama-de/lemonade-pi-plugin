@@ -421,8 +421,8 @@ async function readStoredPayload(): Promise<CredsPayload | null> {
   return null;
 }
 
-function registerAdminCommand(pi: PiClient, oauthBlock: unknown) {
-  pi.registerCommand("lemonade", {
+function lemonadeCommand(pi: PiClient, oauthBlock: any) {
+  return {
     description: "Lemonade server administration (status, models, load/pull/delete)",
     handler: async (args: string, ctx: { ui: { notify(msg: string, level?: string): void } }) => {
       const parts = args.trim().split(/\s+/).filter(Boolean);
@@ -431,7 +431,7 @@ function registerAdminCommand(pi: PiClient, oauthBlock: unknown) {
 
       if (cmd === "" || cmd === "help") {
         ctx.ui.notify(
-          "/lemonade <command>\n" +
+            "/lemonade <command>\n" +
             "  status             — server health\n" +
             "  models             — list models\n" +
             "  load <id>          — load a model into memory\n" +
@@ -440,7 +440,7 @@ function registerAdminCommand(pi: PiClient, oauthBlock: unknown) {
             "  delete <id>        — remove a model from disk\n" +
             "  refresh            — re-fetch model list and re-register provider\n" +
             "  discover           — UDP beacon + HTTP port scan",
-          "info",
+            "info",
         );
         return;
       }
@@ -463,8 +463,8 @@ function registerAdminCommand(pi: PiClient, oauthBlock: unknown) {
       const payload = await readStoredPayload();
       if (!payload?.baseUrl) {
         ctx.ui.notify(
-          "Not connected to Lemonade. Run /login and pick Lemonade.",
-          "warning",
+            "Not connected to Lemonade. Run /login and pick Lemonade.",
+            "warning",
         );
         return;
       }
@@ -479,12 +479,12 @@ function registerAdminCommand(pi: PiClient, oauthBlock: unknown) {
             return;
           }
           ctx.ui.notify(
-            `Lemonade v${h.version} @ ${baseUrl}\n` +
+              `Lemonade v${h.version} @ ${baseUrl}\n` +
               `Status: ${h.status}\n` +
               `Loaded: ${h.model_loaded ?? "(none)"}\n` +
               `All loaded: ${(h.all_models_loaded ?? []).join(", ") || "(none)"}` +
               (h.websocket_port ? `\nWebSocket port: ${h.websocket_port}` : ""),
-            "info",
+              "info",
           );
           return;
         }
@@ -516,7 +516,7 @@ function registerAdminCommand(pi: PiClient, oauthBlock: unknown) {
             return;
           }
           ctx.ui.notify(`Loading ${id}…`, "info");
-          await postModelOp(ctx, `${baseUrl}/api/v1/load`, apiKey, { model_name: id }, "load");
+          await postModelOp(ctx, `${baseUrl}/api/v1/load`, apiKey, {model_name: id}, "load");
           return;
         }
 
@@ -524,11 +524,11 @@ function registerAdminCommand(pi: PiClient, oauthBlock: unknown) {
           const id = rest[0];
           ctx.ui.notify(id ? `Unloading ${id}…` : "Unloading all models…", "info");
           await postModelOp(
-            ctx,
-            `${baseUrl}/api/v1/unload`,
-            apiKey,
-            id ? { model_name: id } : {},
-            "unload",
+              ctx,
+              `${baseUrl}/api/v1/unload`,
+              apiKey,
+              id ? {model_name: id} : {},
+              "unload",
           );
           return;
         }
@@ -541,11 +541,11 @@ function registerAdminCommand(pi: PiClient, oauthBlock: unknown) {
           }
           ctx.ui.notify(`Pulling ${id} (this may take a while)…`, "info");
           await postModelOp(
-            ctx,
-            `${baseUrl}/api/v1/pull`,
-            apiKey,
-            { model_name: id },
-            "pull",
+              ctx,
+              `${baseUrl}/api/v1/pull`,
+              apiKey,
+              {model_name: id},
+              "pull",
           );
           return;
         }
@@ -558,11 +558,11 @@ function registerAdminCommand(pi: PiClient, oauthBlock: unknown) {
           }
           ctx.ui.notify(`Deleting ${id} from disk…`, "info");
           await postModelOp(
-            ctx,
-            `${baseUrl}/api/v1/delete`,
-            apiKey,
-            { model_name: id },
-            "delete",
+              ctx,
+              `${baseUrl}/api/v1/delete`,
+              apiKey,
+              {model_name: id},
+              "delete",
           );
           return;
         }
@@ -577,7 +577,7 @@ function registerAdminCommand(pi: PiClient, oauthBlock: unknown) {
           ctx.ui.notify(`Unknown command: /lemonade ${cmd}\nType /lemonade help`, "warning");
       }
     },
-  });
+  };
 }
 
 async function postModelOp(
@@ -658,5 +658,5 @@ export default async function lemonadeProvider(pi: PiClient) {
     }
   }
 
-  registerAdminCommand(pi, oauthBlock);
+  pi.registerCommand("lemonade", lemonadeCommand(pi, oauthBlock));
 }

@@ -1,6 +1,6 @@
 # Code guidelines
 
-- All code should have proper typing. Using any or unknown is highly discouraged.
+- All code should have proper typing. Using any or unknown, even implicitly, is highly discouraged.
 - New features must always be accompanied by tests.
 - Do not add new dependencies without prior approval or direct instruction.
 - Before you finish your work, always make sure the code compiles and all tests pass.
