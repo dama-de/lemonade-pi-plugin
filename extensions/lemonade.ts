@@ -27,7 +27,7 @@ const CREDS_TTL_MS = 24 * 60 * 60 * 1000
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export interface LemonadeHealth {
+interface LemonadeHealth {
     status: string;
     version: string;
     model_loaded: string | null;
@@ -35,7 +35,7 @@ export interface LemonadeHealth {
     websocket_port?: number;
 }
 
-export interface LemonadeModelInfo {
+interface LemonadeModelInfo {
     id: string;
     created?: number;
     object?: string;
@@ -69,7 +69,7 @@ interface BeaconResult {
 
 // ─── Credential encoding ─────────────────────────────────────────────────────
 
-export function encodeCreds(payload: CredsPayload): OAuthCredentials {
+function encodeCreds(payload: CredsPayload): OAuthCredentials {
     return {
         refresh: JSON.stringify(payload),
         access: payload.apiKey,
@@ -77,7 +77,7 @@ export function encodeCreds(payload: CredsPayload): OAuthCredentials {
     }
 }
 
-export function decodeCreds(creds: OAuthCredentials): CredsPayload {
+function decodeCreds(creds: OAuthCredentials): CredsPayload {
     try {
         const parsed = JSON.parse(creds.refresh ?? "")
         return {
@@ -92,7 +92,7 @@ export function decodeCreds(creds: OAuthCredentials): CredsPayload {
 
 // ─── URL helpers ──────────────────────────────────────────────────────────────
 
-export function buildBaseUrl(raw: string): string {
+function buildBaseUrl(raw: string): string {
     let url = (raw ?? "").trim()
     if (!url) return ""
     url = url.replace(/\/+$/, "")
@@ -111,7 +111,7 @@ export function buildBaseUrl(raw: string): string {
     return url.replace(/\/+$/, "")
 }
 
-export function authHeaders(apiKey?: string): Record<string, string> {
+function authHeaders(apiKey?: string): Record<string, string> {
     const h: Record<string, string> = {
         "Content-Type": "application/json",
         Accept: "application/json",
@@ -130,7 +130,7 @@ export function authHeaders(apiKey?: string): Record<string, string> {
  * localOnly=true accepts only loopback senders (matches the lemonade CLI's
  * discover_local_server_port). false accepts any sender, for LAN-wide scans.
  */
-export function discoverViaBeacon(timeoutMs: number, localOnly: boolean): Promise<BeaconResult[]> {
+function discoverViaBeacon(timeoutMs: number, localOnly: boolean): Promise<BeaconResult[]> {
     return new Promise((resolve) => {
         const found = new Map<string, BeaconResult>()
         let sock: ReturnType<typeof dgram.createSocket> | null = null
@@ -189,7 +189,7 @@ export function discoverViaBeacon(timeoutMs: number, localOnly: boolean): Promis
     })
 }
 
-export async function discoverViaHttp(): Promise<BeaconResult[]> {
+async function discoverViaHttp(): Promise<BeaconResult[]> {
     const checks = await Promise.all(
         HTTP_FALLBACK_PORTS.map(async (port) => {
             const baseUrl = `http://localhost:${port}`
@@ -200,7 +200,7 @@ export async function discoverViaHttp(): Promise<BeaconResult[]> {
     return checks.filter((r): r is BeaconResult => r !== null)
 }
 
-export async function discoverServers(timeoutMs = 2500): Promise<BeaconResult[]> {
+async function discoverServers(timeoutMs = 2500): Promise<BeaconResult[]> {
     const beacons = await discoverViaBeacon(timeoutMs, /*localOnly=*/ false)
     if (beacons.length > 0) return beacons
     return await discoverViaHttp()
@@ -208,7 +208,7 @@ export async function discoverServers(timeoutMs = 2500): Promise<BeaconResult[]>
 
 // ─── HTTP calls ───────────────────────────────────────────────────────────────
 
-export async function checkHealth(baseUrl: string, apiKey?: string): Promise<LemonadeHealth | null> {
+async function checkHealth(baseUrl: string, apiKey?: string): Promise<LemonadeHealth | null> {
     try {
         const res = await fetch(`${baseUrl}/api/v1/health`, {
             headers: authHeaders(apiKey),
@@ -221,7 +221,7 @@ export async function checkHealth(baseUrl: string, apiKey?: string): Promise<Lem
     }
 }
 
-export async function fetchModels(baseUrl: string, apiKey?: string): Promise<LemonadeModelInfo[]> {
+async function fetchModels(baseUrl: string, apiKey?: string): Promise<LemonadeModelInfo[]> {
     try {
         const res = await fetch(`${baseUrl}/api/v1/models`, {
             headers: authHeaders(apiKey),
@@ -237,6 +237,16 @@ export async function fetchModels(baseUrl: string, apiKey?: string): Promise<Lem
 
 // ─── Provider model mapping ───────────────────────────────────────────────────
 
+export interface ProviderModel {
+    id: string;
+    name: string;
+    reasoning: boolean;
+    input: ("text" | "image")[];
+    cost: { input: number; output: number; cacheRead: number; cacheWrite: number };
+    contextWindow: number;
+    maxTokens: number;
+}
+
 function isReasoningModel(m: LemonadeModelInfo): boolean {
     if (m.labels?.includes("reasoning")) return true
     const recipe = m.recipe?.toLowerCase()
@@ -244,7 +254,7 @@ function isReasoningModel(m: LemonadeModelInfo): boolean {
     return ["qwq", "deepseek-r1", "r1", "o1", "o3", "think"].some((t) => recipe.includes(t))
 }
 
-export function mapToProviderModel(m: LemonadeModelInfo) {
+function mapToProviderModel(m: LemonadeModelInfo): ProviderModel {
     const input: ("text" | "image")[] = ["text"]
     if (m.labels?.includes("image")) {
         input.push("image")
@@ -260,6 +270,19 @@ export function mapToProviderModel(m: LemonadeModelInfo) {
         contextWindow,
         maxTokens,
     }
+}
+
+export default {
+    authHeaders,
+    buildBaseUrl,
+    checkHealth,
+    decodeCreds,
+    discoverServers,
+    discoverViaBeacon,
+    discoverViaHttp,
+    encodeCreds,
+    fetchModels,
+    mapToProviderModel,
 }
 
 

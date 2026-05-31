@@ -15,19 +15,7 @@ import path from "node:path"
 import type {ExtensionAPI, ExtensionCommandContext} from "@earendil-works/pi-coding-agent"
 import type {OAuthCredentials, OAuthLoginCallbacks, OAuthProviderInterface} from "@earendil-works/pi-ai"
 
-import {
-  authHeaders,
-  buildBaseUrl,
-  checkHealth,
-  type CredsPayload,
-  decodeCreds,
-  discoverServers,
-  discoverViaBeacon,
-  discoverViaHttp,
-  encodeCreds,
-  fetchModels,
-  mapToProviderModel,
-} from "./lemonade"
+import lemonade, {type CredsPayload, type ProviderModel} from "./lemonade"
 
 const PROVIDER_ID = "lemonade"
 const PROVIDER_LABEL = "Lemonade"
@@ -37,7 +25,7 @@ interface ProviderConfig {
   name: string;
   baseUrl: string;
   api: string;
-  models: ReturnType<typeof mapToProviderModel>[];
+  models: ProviderModel[];
   oauth: Omit<OAuthProviderInterface, "id">;
   headers?: Record<string, string>;
 }
@@ -46,7 +34,7 @@ function buildProviderConfig(
     baseUrl: string,
     serverName: string | undefined,
     apiKey: string | undefined,
-    models: ReturnType<typeof mapToProviderModel>[],
+    models: ProviderModel[],
     oauthBlock: Omit<OAuthProviderInterface, "id">,
 ): ProviderConfig {
   return {
@@ -77,7 +65,7 @@ async function oauthLogin(
   callbacks: OAuthLoginCallbacks,
     oauthBlock: Omit<OAuthProviderInterface, "id">,
 ): Promise<OAuthCredentials> {
-  const discovered = await discoverServers(2500)
+  const discovered = await lemonade.discoverServers(2500)
 
   let baseUrl: string
   let serverName = "Lemonade"
@@ -89,7 +77,7 @@ async function oauthLogin(
         "Enter Lemonade server URL (press Enter for http://localhost:8000):",
     })
     const trimmed = input.trim()
-    baseUrl = trimmed ? buildBaseUrl(trimmed) : "http://localhost:8000"
+    baseUrl = trimmed ? lemonade.buildBaseUrl(trimmed) : "http://localhost:8000"
   } else if (discovered.length === 1) {
     const only = discovered[0]
     const confirm = await callbacks.onPrompt({
@@ -99,7 +87,7 @@ async function oauthLogin(
     })
     const trimmed = confirm.trim()
     if (trimmed) {
-      baseUrl = buildBaseUrl(trimmed)
+      baseUrl = lemonade.buildBaseUrl(trimmed)
       serverName = "Lemonade"
     } else {
       baseUrl = only.baseUrl
@@ -117,7 +105,7 @@ async function oauthLogin(
       baseUrl = discovered[num - 1].baseUrl
       serverName = discovered[num - 1].hostname
     } else if (choice) {
-      baseUrl = buildBaseUrl(choice)
+      baseUrl = lemonade.buildBaseUrl(choice)
       serverName = "Lemonade"
     } else {
       baseUrl = discovered[0].baseUrl
@@ -131,7 +119,7 @@ async function oauthLogin(
   })
   const apiKey = apiKeyInput.trim()
 
-  const health = await checkHealth(baseUrl, apiKey || undefined)
+  const health = await lemonade.checkHealth(baseUrl, apiKey || undefined)
   if (!health) {
     throw new Error(
       `Cannot reach Lemonade at ${baseUrl}. Check that the server is running` +
@@ -145,11 +133,11 @@ async function oauthLogin(
     apiKey,
     serverName: `${serverName} v${health.version}`,
   }
-  const rawModels = await fetchModels(baseUrl, apiKey)
-  const config = buildProviderConfig(baseUrl, payload.serverName, apiKey, rawModels.map(mapToProviderModel), oauthBlock)
+  const rawModels = await lemonade.fetchModels(baseUrl, apiKey)
+  const config = buildProviderConfig(baseUrl, payload.serverName, apiKey, rawModels.map(lemonade.mapToProviderModel), oauthBlock)
   await registerProvider(pi, config)
 
-  return encodeCreds(payload) as OAuthCredentials
+  return lemonade.encodeCreds(payload) as OAuthCredentials
 }
 
 // ─── Pi command handling ──────────────────────────────────────────────────────
@@ -186,7 +174,7 @@ async function readStoredPayload(): Promise<CredsPayload | null> {
         typeof c === "object" &&
         typeof (c as OAuthCredentials).refresh === "string"
       ) {
-        return decodeCreds(c as OAuthCredentials)
+        return lemonade.decodeCreds(c as OAuthCredentials)
       }
     }
   } catch {
@@ -221,8 +209,8 @@ function lemonadeCommand(pi: ExtensionAPI, oauthBlock: Omit<OAuthProviderInterfa
 
       if (cmd === "discover") {
         ctx.ui.notify("Scanning UDP beacons (3s) + local port fallback…", "info")
-        const beacons = await discoverViaBeacon(3000, /*localOnly=*/ false)
-        const http = beacons.length === 0 ? await discoverViaHttp() : []
+        const beacons = await lemonade.discoverViaBeacon(3000, /*localOnly=*/ false)
+        const http = beacons.length === 0 ? await lemonade.discoverViaHttp() : []
         const all = [...beacons, ...http]
         if (all.length === 0) {
           ctx.ui.notify("No Lemonade servers found.", "warning")
@@ -247,7 +235,7 @@ function lemonadeCommand(pi: ExtensionAPI, oauthBlock: Omit<OAuthProviderInterfa
 
       switch (cmd) {
         case "status": {
-          const h = await checkHealth(baseUrl, apiKey)
+          const h = await lemonade.checkHealth(baseUrl, apiKey)
           if (!h) {
             ctx.ui.notify(`Cannot reach ${baseUrl}`, "error")
             return
@@ -265,7 +253,7 @@ function lemonadeCommand(pi: ExtensionAPI, oauthBlock: Omit<OAuthProviderInterfa
 
         case "models":
         case "list": {
-          const models = await fetchModels(baseUrl, apiKey)
+          const models = await lemonade.fetchModels(baseUrl, apiKey)
           if (models.length === 0) {
             ctx.ui.notify("No models found.", "warning")
             return
@@ -345,8 +333,8 @@ function lemonadeCommand(pi: ExtensionAPI, oauthBlock: Omit<OAuthProviderInterfa
         }
 
         case "refresh": {
-          const rawModels = await fetchModels(baseUrl, apiKey)
-          const mapped = rawModels.map(mapToProviderModel)
+          const rawModels = await lemonade.fetchModels(baseUrl, apiKey)
+          const mapped = rawModels.map(lemonade.mapToProviderModel)
           const config = buildProviderConfig(baseUrl, payload.serverName, apiKey, mapped, oauthBlock)
           await registerProvider(pi, config)
           ctx.ui.notify(`Re-synced: ${mapped.length} models registered.`, "info")
@@ -370,7 +358,7 @@ async function postModelOp(
   try {
     const r = await fetch(url, {
       method: "POST",
-      headers: authHeaders(apiKey),
+      headers: lemonade.authHeaders(apiKey),
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(60_000),
     })
@@ -403,20 +391,20 @@ export default async function lemonadeProvider(pi: ExtensionAPI) {
     name: PROVIDER_LABEL,
     login: (callbacks: OAuthLoginCallbacks): Promise<OAuthCredentials> => oauthLogin(pi, callbacks, oauthBlock) as Promise<OAuthCredentials>,
     refreshToken: async (creds: OAuthCredentials): Promise<OAuthCredentials> => {
-      const payload = decodeCreds(creds)
+      const payload = lemonade.decodeCreds(creds)
       if (payload.baseUrl) {
         try {
-          const rawModels = await fetchModels(payload.baseUrl, payload.apiKey)
-          const config = buildProviderConfig(payload.baseUrl, payload.serverName, payload.apiKey, rawModels.map(mapToProviderModel), oauthBlock)
+          const rawModels = await lemonade.fetchModels(payload.baseUrl, payload.apiKey)
+          const config = buildProviderConfig(payload.baseUrl, payload.serverName, payload.apiKey, rawModels.map(lemonade.mapToProviderModel), oauthBlock)
           await registerProvider(pi, config)
         } catch {
           // network blip — keep creds, retry on next refresh
         }
       }
-      return encodeCreds(payload) as OAuthCredentials
+      return lemonade.encodeCreds(payload) as OAuthCredentials
     },
     getApiKey: (creds: OAuthCredentials): string => {
-      const payload = decodeCreds(creds)
+      const payload = lemonade.decodeCreds(creds)
       return payload.apiKey || ""
     },
   }
@@ -436,8 +424,8 @@ export default async function lemonadeProvider(pi: ExtensionAPI) {
   const stored = await readStoredPayload()
   if (stored?.baseUrl) {
     try {
-      const rawModels = await fetchModels(stored.baseUrl, stored.apiKey)
-      const config = buildProviderConfig(stored.baseUrl, stored.serverName, stored.apiKey, rawModels.map(mapToProviderModel), oauthBlock)
+      const rawModels = await lemonade.fetchModels(stored.baseUrl, stored.apiKey)
+      const config = buildProviderConfig(stored.baseUrl, stored.serverName, stored.apiKey, rawModels.map(lemonade.mapToProviderModel), oauthBlock)
       await registerProvider(pi, config)
     } catch {
       // ignore — refreshToken will retry
