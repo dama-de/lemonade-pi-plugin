@@ -271,36 +271,39 @@ function mapToProviderModel(m: LemonadeModelInfo) {
 
 // ─── Provider (re-)registration ─────────────────────────────────────────────
 
-async function registerLemonadeProvider(
-    pi: ExtensionAPI,
-  payload: CredsPayload | null,
-    oauthBlock: Omit<OAuthProviderInterface, "id">,
-): Promise<number> {
-  const baseUrl = payload?.baseUrl ?? ""
-  let providerModels: ReturnType<typeof mapToProviderModel>[] = []
-  if (baseUrl) {
-    const raw = await fetchModels(baseUrl, payload?.apiKey)
-    providerModels = raw.map(mapToProviderModel)
-  }
+interface ProviderConfig {
+  name: string;
+  baseUrl: string;
+  api: string;
+  models: ReturnType<typeof mapToProviderModel>[];
+  oauth: Omit<OAuthProviderInterface, "id">;
+  headers?: Record<string, string>;
+}
 
+function buildProviderConfig(
+    baseUrl: string,
+    serverName: string | undefined,
+    apiKey: string | undefined,
+    models: ReturnType<typeof mapToProviderModel>[],
+    oauthBlock: Omit<OAuthProviderInterface, "id">,
+): ProviderConfig {
+  return {
+    name: serverName ? `Lemonade (${serverName})` : "Lemonade",
+    baseUrl: baseUrl ? `${baseUrl}/v1` : "http://localhost:8000/v1",
+    api: "openai-completions",
+    models,
+    oauth: oauthBlock,
+    ...(apiKey ? {headers: {Authorization: `Bearer ${apiKey}`}} : {}),
+  }
+}
+
+async function registerProvider(pi: ExtensionAPI, config: ProviderConfig): Promise<void> {
   try {
     pi.unregisterProvider(PROVIDER_ID)
   } catch {
     // not previously registered; ignore
   }
-
-  const config: Record<string, unknown> = {
-    name: payload?.serverName ? `Lemonade (${payload.serverName})` : "Lemonade",
-    baseUrl: baseUrl ? `${baseUrl}/v1` : "http://localhost:8000/v1",
-    api: "openai-completions",
-    models: providerModels,
-    oauth: oauthBlock,
-  }
-  if (payload?.apiKey) {
-    config.headers = {Authorization: `Bearer ${payload.apiKey}`}
-  }
   pi.registerProvider(PROVIDER_ID, config)
-  return providerModels.length
 }
 
 // ─── OAuth login flow (runs when user picks "Lemonade" in /login) ───────────
@@ -378,7 +381,9 @@ async function oauthLogin(
     apiKey,
     serverName: `${serverName} v${health.version}`,
   }
-  await registerLemonadeProvider(pi, payload, oauthBlock)
+  const rawModels = await fetchModels(baseUrl, apiKey)
+  const config = buildProviderConfig(baseUrl, payload.serverName, apiKey, rawModels.map(mapToProviderModel), oauthBlock)
+  await registerProvider(pi, config)
 
   return encodeCreds(payload)
 }
@@ -574,8 +579,11 @@ function lemonadeCommand(pi: ExtensionAPI, oauthBlock: Omit<OAuthProviderInterfa
         }
 
         case "refresh": {
-          const count = await registerLemonadeProvider(pi, payload, oauthBlock)
-          ctx.ui.notify(`Re-synced: ${count} models registered.`, "info")
+          const rawModels = await fetchModels(baseUrl, apiKey)
+          const mapped = rawModels.map(mapToProviderModel)
+          const config = buildProviderConfig(baseUrl, payload.serverName, apiKey, mapped, oauthBlock)
+          await registerProvider(pi, config)
+          ctx.ui.notify(`Re-synced: ${mapped.length} models registered.`, "info")
           return
         }
 
@@ -631,7 +639,9 @@ export default async function lemonadeProvider(pi: ExtensionAPI) {
       const payload = decodeCreds(creds)
       if (payload.baseUrl) {
         try {
-          await registerLemonadeProvider(pi, payload, oauthBlock)
+          const rawModels = await fetchModels(payload.baseUrl, payload.apiKey)
+          const config = buildProviderConfig(payload.baseUrl, payload.serverName, payload.apiKey, rawModels.map(mapToProviderModel), oauthBlock)
+          await registerProvider(pi, config)
         } catch {
           // network blip — keep creds, retry on next refresh
         }
@@ -659,7 +669,9 @@ export default async function lemonadeProvider(pi: ExtensionAPI) {
   const stored = await readStoredPayload()
   if (stored?.baseUrl) {
     try {
-      await registerLemonadeProvider(pi, stored, oauthBlock)
+      const rawModels = await fetchModels(stored.baseUrl, stored.apiKey)
+      const config = buildProviderConfig(stored.baseUrl, stored.serverName, stored.apiKey, rawModels.map(mapToProviderModel), oauthBlock)
+      await registerProvider(pi, config)
     } catch {
       // ignore — refreshToken will retry
     }
