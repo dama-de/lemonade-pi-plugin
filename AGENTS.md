@@ -9,7 +9,7 @@
 
 - All code should have proper typing. Using any or unknown, even implicitly, is highly discouraged.
 - New features must always be accompanied by tests.
-- Before you finish your work, always make sure the code compiles and all tests pass.
+- Before you finish your work, always make sure the code compiles, all tests pass, and eslint reports no errors.
 
 # Test guidelines
 

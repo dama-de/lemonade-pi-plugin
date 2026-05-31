@@ -181,4 +181,54 @@ describe("/lemonade command", () => {
             expect(message).toBe("No models found.")
         })
     })
+
+    describe("refresh", () => {
+        it("re-fetches models and re-registers the provider", async () => {
+            nock("http://localhost:13305")
+                .persist()
+                .get("/api/v1/models")
+                .reply(200, modelsSampleResponse)
+
+            mockAuthJson()
+            const handler = await getHandler()
+            await handler("refresh", contextMock)
+
+            expect(contextMock.ui.notify).toHaveBeenCalledTimes(1)
+            const [message, level] = contextMock.ui.notify.mock.calls[0]!
+            expect(level).toBe("info")
+            expect(message).toBe("Re-synced: 4 models registered.")
+        })
+
+        it("shows zero models when the server returns an empty list", async () => {
+            nock("http://localhost:13305")
+                .persist()
+                .get("/api/v1/models")
+                .reply(200, {data: []})
+
+            mockAuthJson()
+            const handler = await getHandler()
+            await handler("refresh", contextMock)
+
+            expect(contextMock.ui.notify).toHaveBeenCalledTimes(1)
+            const [message, level] = contextMock.ui.notify.mock.calls[0]!
+            expect(level).toBe("info")
+            expect(message).toBe("Re-synced: 0 models registered.")
+        })
+
+        it("shows zero models when the server is unreachable", async () => {
+            nock("http://localhost:13305")
+                .persist()
+                .get("/api/v1/models")
+                .reply(503, {error: "Server starting up"})
+
+            mockAuthJson()
+            const handler = await getHandler()
+            await handler("refresh", contextMock)
+
+            expect(contextMock.ui.notify).toHaveBeenCalledTimes(1)
+            const [message, level] = contextMock.ui.notify.mock.calls[0]!
+            expect(level).toBe("info")
+            expect(message).toBe("Re-synced: 0 models registered.")
+        })
+    })
 })
