@@ -20,7 +20,7 @@ import {promises as fs} from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import type {ExtensionAPI, ExtensionCommandContext} from "@earendil-works/pi-coding-agent"
-import type {OAuthCredentials, OAuthLoginCallbacks} from "@earendil-works/pi-ai"
+import type {OAuthCredentials, OAuthLoginCallbacks, OAuthProviderInterface} from "@earendil-works/pi-ai"
 
 const PROVIDER_ID = "lemonade"
 const PROVIDER_LABEL = "Lemonade"
@@ -266,7 +266,7 @@ function mapToProviderModel(m: LemonadeModelInfo) {
 async function registerLemonadeProvider(
     pi: ExtensionAPI,
   payload: CredsPayload | null,
-  oauthBlock: unknown,
+    oauthBlock: Omit<OAuthProviderInterface, "id">,
 ): Promise<number> {
   const baseUrl = payload?.baseUrl ?? ""
   let providerModels: ReturnType<typeof mapToProviderModel>[] = []
@@ -300,11 +300,11 @@ async function registerLemonadeProvider(
 async function oauthLogin(
     pi: ExtensionAPI,
   callbacks: OAuthLoginCallbacks,
-  oauthBlock: unknown,
+    oauthBlock: Omit<OAuthProviderInterface, "id">,
 ): Promise<OAuthCredentials> {
   const discovered = await discoverServers(2500)
 
-  let baseUrl = ""
+  let baseUrl: string
   let serverName = "Lemonade"
 
   if (discovered.length === 0) {
@@ -415,7 +415,7 @@ async function readStoredPayload(): Promise<CredsPayload | null> {
   return null
 }
 
-function lemonadeCommand(pi: ExtensionAPI, oauthBlock: any) {
+function lemonadeCommand(pi: ExtensionAPI, oauthBlock: Omit<OAuthProviderInterface, "id">) {
   return {
     description: "Lemonade server administration (status, models, load/pull/delete)",
     handler: async (args: string, ctx: ExtensionCommandContext) => {
@@ -612,7 +612,7 @@ async function postModelOp(
 // ─── Extension factory ──────────────────────────────────────────────────────
 
 export default async function lemonadeProvider(pi: ExtensionAPI) {
-  const oauthBlock = {
+  const oauthBlock: Omit<OAuthProviderInterface, "id"> = {
     name: PROVIDER_LABEL,
     login: (callbacks: OAuthLoginCallbacks): Promise<OAuthCredentials> => oauthLogin(pi, callbacks, oauthBlock),
     refreshToken: async (creds: OAuthCredentials): Promise<OAuthCredentials> => {
