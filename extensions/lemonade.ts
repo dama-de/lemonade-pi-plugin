@@ -221,6 +221,78 @@ async function checkHealth(baseUrl: string, apiKey?: string): Promise<LemonadeHe
     }
 }
 
+interface ModelOpResponse {
+    message?: string
+    model_name?: string
+    error?: string | { message?: string }
+}
+
+export type ModelOpResult =
+    | { ok: true; message?: string; model_name?: string }
+    | { ok: false; error: string }
+
+async function postModelOp(
+    baseUrl: string,
+    endpoint: string,
+    body: { model_name?: string },
+    apiKey?: string,
+): Promise<ModelOpResult> {
+    try {
+        const r = await fetch(`${baseUrl}/api/v1/${endpoint}`, {
+            method: "POST",
+            headers: authHeaders(apiKey),
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(60_000),
+        })
+
+        const data: ModelOpResponse = await r.json().catch(() => ({}))
+
+        if (!r.ok) {
+            const msg =
+                typeof data.error === "object" && data.error !== null
+                    ? data.error.message ?? r.statusText
+                    : data.error ?? r.statusText
+            return {ok: false, error: msg}
+        }
+
+        return {ok: true, message: data.message, model_name: data.model_name}
+    } catch (e) {
+        return {ok: false, error: e instanceof Error ? e.message : String(e)}
+    }
+}
+
+export async function postLoad(
+    baseUrl: string,
+    modelId: string,
+    apiKey?: string,
+): Promise<ModelOpResult> {
+    return postModelOp(baseUrl, "load", {model_name: modelId}, apiKey)
+}
+
+export async function postUnload(
+    baseUrl: string,
+    modelId?: string,
+    apiKey?: string,
+): Promise<ModelOpResult> {
+    return postModelOp(baseUrl, "unload", modelId ? {model_name: modelId} : {}, apiKey)
+}
+
+export async function postPull(
+    baseUrl: string,
+    modelId: string,
+    apiKey?: string,
+): Promise<ModelOpResult> {
+    return postModelOp(baseUrl, "pull", {model_name: modelId}, apiKey)
+}
+
+export async function postDelete(
+    baseUrl: string,
+    modelId: string,
+    apiKey?: string,
+): Promise<ModelOpResult> {
+    return postModelOp(baseUrl, "delete", {model_name: modelId}, apiKey)
+}
+
 async function fetchModels(baseUrl: string, apiKey?: string): Promise<LemonadeModelInfo[]> {
     try {
         const res = await fetch(`${baseUrl}/api/v1/models`, {
@@ -274,7 +346,6 @@ function mapToProviderModel(m: LemonadeModelInfo): ProviderModel {
 }
 
 export default {
-    authHeaders,
     buildBaseUrl,
     checkHealth,
     decodeCreds,
@@ -284,6 +355,10 @@ export default {
     encodeCreds,
     fetchModels,
     mapToProviderModel,
+    postDelete,
+    postLoad,
+    postPull,
+    postUnload,
 }
 
 

@@ -15,7 +15,7 @@ import path from "node:path"
 import type {ExtensionAPI, ExtensionCommandContext, ProviderConfig} from "@earendil-works/pi-coding-agent"
 import type {OAuthCredentials, OAuthLoginCallbacks, OAuthProviderInterface} from "@earendil-works/pi-ai"
 
-import lemonade, {type CredsPayload, type ProviderModel} from "./lemonade"
+import lemonade, {type CredsPayload, type ModelOpResult, type ProviderModel} from "./lemonade"
 
 const PROVIDER_ID = "lemonade"
 const PROVIDER_LABEL = "Lemonade"
@@ -272,20 +272,16 @@ function lemonadeCommand(pi: ExtensionAPI, oauthBlock: Omit<OAuthProviderInterfa
             return
           }
           ctx.ui.notify(`Loading ${id}…`, "info")
-          await postModelOp(ctx, `${baseUrl}/api/v1/load`, apiKey, {model_name: id}, "load")
+          const loadResult = await lemonade.postLoad(baseUrl, id, apiKey)
+          notifyModelOpResult(ctx, "load", loadResult)
           return
         }
 
         case "unload": {
           const id = rest[0]
           ctx.ui.notify(id ? `Unloading ${id}…` : "Unloading all models…", "info")
-          await postModelOp(
-              ctx,
-              `${baseUrl}/api/v1/unload`,
-              apiKey,
-              id ? {model_name: id} : {},
-              "unload",
-          )
+          const unloadResult = await lemonade.postUnload(baseUrl, id, apiKey)
+          notifyModelOpResult(ctx, "unload", unloadResult)
           return
         }
 
@@ -296,13 +292,8 @@ function lemonadeCommand(pi: ExtensionAPI, oauthBlock: Omit<OAuthProviderInterfa
             return
           }
           ctx.ui.notify(`Pulling ${id} (this may take a while)…`, "info")
-          await postModelOp(
-              ctx,
-              `${baseUrl}/api/v1/pull`,
-              apiKey,
-              {model_name: id},
-              "pull",
-          )
+          const pullResult = await lemonade.postPull(baseUrl, id, apiKey)
+          notifyModelOpResult(ctx, "pull", pullResult)
           return
         }
 
@@ -313,13 +304,8 @@ function lemonadeCommand(pi: ExtensionAPI, oauthBlock: Omit<OAuthProviderInterfa
             return
           }
           ctx.ui.notify(`Deleting ${id} from disk…`, "info")
-          await postModelOp(
-              ctx,
-              `${baseUrl}/api/v1/delete`,
-              apiKey,
-              {model_name: id},
-              "delete",
-          )
+          const deleteResult = await lemonade.postDelete(baseUrl, id, apiKey)
+          notifyModelOpResult(ctx, "delete", deleteResult)
           return
         }
 
@@ -339,38 +325,16 @@ function lemonadeCommand(pi: ExtensionAPI, oauthBlock: Omit<OAuthProviderInterfa
   }
 }
 
-async function postModelOp(
-  ctx: { ui: { notify(msg: string, level?: string): void } },
-  url: string,
-  apiKey: string | undefined,
-  body: Record<string, unknown>,
+function notifyModelOpResult(
+    ctx: ExtensionCommandContext,
   label: string,
-) {
-  try {
-    const r = await fetch(url, {
-      method: "POST",
-      headers: lemonade.authHeaders(apiKey),
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(60_000),
-    })
-    const data = await r.json().catch(() => ({}) as Record<string, unknown>)
-    if (!r.ok) {
-      const msg =
-        (data as { error?: { message?: string } | string })?.error &&
-        typeof (data as { error?: { message?: string } }).error === "object"
-          ? (data as { error: { message?: string } }).error.message
-            : ((data as { error?: string }).error ?? r.statusText)
-      ctx.ui.notify(`${label} failed: ${msg}`, "error")
-      return
-    }
-    const successMsg =
-      (data as { message?: string }).message ??
-        `${label} succeeded${(data as { model_name?: string }).model_name ? `: ${(data as {
-          model_name?: string
-        }).model_name}` : ""}`
-    ctx.ui.notify(successMsg, "info")
-  } catch (e) {
-    ctx.ui.notify(`${label} failed: ${e instanceof Error ? e.message : String(e)}`, "error")
+    result: ModelOpResult,
+): void {
+  if (result.ok) {
+    const msg = result.message ?? `${label} succeeded${result.model_name ? `: ${result.model_name}` : ""}`
+    ctx.ui.notify(msg, "info")
+  } else {
+    ctx.ui.notify(`${label} failed: ${result.error}`, "error")
   }
 }
 
