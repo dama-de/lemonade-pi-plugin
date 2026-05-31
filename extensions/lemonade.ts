@@ -259,7 +259,8 @@ function mapToProviderModel(m: LemonadeModelInfo): ProviderModel {
     if (m.labels?.includes("image")) {
         input.push("image")
     }
-    const contextWindow = m.max_context_window ?? 128000
+    const recipeCtx = typeof m.recipe_options?.ctx_size === "number" ? m.recipe_options.ctx_size : undefined
+    const contextWindow = recipeCtx ?? m.max_context_window ?? 128000
     const maxTokens = 4096
     return {
         id: m.id,

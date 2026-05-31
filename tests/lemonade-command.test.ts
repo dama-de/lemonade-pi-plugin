@@ -1,48 +1,32 @@
 import {beforeEach, describe, expect, it, vi} from "vitest"
-import {mockDeep} from "vitest-mock-extended"
-import {vol} from "memfs"
+import {DeepMockProxy, mockDeep} from "vitest-mock-extended"
 import nock from "nock"
 import type {ExtensionAPI, ExtensionCommandContext} from "@earendil-works/pi-coding-agent"
 
 import lemonadeProvider from "../extensions/index"
 import modelsSampleResponse from "./models-sample-response.json"
+import {loggedInAuthJson, mockAuthJson} from "./fixtures"
 
 describe("/lemonade command", () => {
-    let contextMock: ReturnType<typeof mockDeep<ExtensionCommandContext>>
+    let pi: DeepMockProxy<ExtensionAPI>
+    let contextMock: DeepMockProxy<ExtensionCommandContext>
 
     beforeEach(async () => {
         vi.restoreAllMocks()
         nock.cleanAll()
 
         contextMock = mockDeep<ExtensionCommandContext>()
+        pi = mockDeep<ExtensionAPI>()
+        await lemonadeProvider(pi)
     })
 
     async function getHandler() {
-        const pi = mockDeep<ExtensionAPI>()
-        await lemonadeProvider(pi)
-
         const [name, options] = vi.mocked(pi.registerCommand).mock.calls[0]!
         expect(name).toBe("lemonade")
         return options.handler as (
             args: string,
             ctx: ExtensionCommandContext,
         ) => Promise<void>
-    }
-
-    const mockAuthJson = () => {
-        vol.fromJSON({
-            "/home/testuser/.pi/agent/auth.json": JSON.stringify({
-                lemonade: {
-                    refresh: JSON.stringify({
-                        baseUrl: "http://localhost:13305",
-                        apiKey: "test-key",
-                        serverName: "Lemonade v0.5.0",
-                    }),
-                    access: "test-key",
-                    expires: Date.now() + 86400000,
-                },
-            }),
-        })
     }
 
     describe("no subcommand (help)", () => {
@@ -78,7 +62,7 @@ describe("/lemonade command", () => {
                     websocket_port: 13306,
                 })
 
-            mockAuthJson()
+            mockAuthJson(loggedInAuthJson)
             const handler = await getHandler()
             await handler("status", contextMock)
 
@@ -99,7 +83,7 @@ describe("/lemonade command", () => {
                 .get("/api/v1/health")
                 .reply(503, {error: "Server starting up"})
 
-            mockAuthJson()
+            mockAuthJson(loggedInAuthJson)
             const handler = await getHandler()
             await handler("status", contextMock)
 
@@ -115,7 +99,7 @@ describe("/lemonade command", () => {
                 .get("/api/v1/health")
                 .reply(500, {error: "Internal error"})
 
-            mockAuthJson()
+            mockAuthJson(loggedInAuthJson)
             const handler = await getHandler()
             await handler("status", contextMock)
 
@@ -133,7 +117,7 @@ describe("/lemonade command", () => {
                 .get("/api/v1/models")
                 .reply(200, modelsSampleResponse)
 
-            mockAuthJson()
+            mockAuthJson(loggedInAuthJson)
             const handler = await getHandler()
             await handler("models", contextMock)
 
@@ -155,7 +139,7 @@ describe("/lemonade command", () => {
                 .get("/api/v1/models")
                 .reply(200, {data: []})
 
-            mockAuthJson()
+            mockAuthJson(loggedInAuthJson)
             const handler = await getHandler()
             await handler("models", contextMock)
 
@@ -171,7 +155,7 @@ describe("/lemonade command", () => {
                 .get("/api/v1/models")
                 .reply(503, {error: "Server starting up"})
 
-            mockAuthJson()
+            mockAuthJson(loggedInAuthJson)
             const handler = await getHandler()
             await handler("models", contextMock)
 
@@ -189,7 +173,7 @@ describe("/lemonade command", () => {
                 .get("/api/v1/models")
                 .reply(200, modelsSampleResponse)
 
-            mockAuthJson()
+            mockAuthJson(loggedInAuthJson)
             const handler = await getHandler()
             await handler("refresh", contextMock)
 
@@ -205,7 +189,7 @@ describe("/lemonade command", () => {
                 .get("/api/v1/models")
                 .reply(200, {data: []})
 
-            mockAuthJson()
+            mockAuthJson(loggedInAuthJson)
             const handler = await getHandler()
             await handler("refresh", contextMock)
 
@@ -221,7 +205,7 @@ describe("/lemonade command", () => {
                 .get("/api/v1/models")
                 .reply(503, {error: "Server starting up"})
 
-            mockAuthJson()
+            mockAuthJson(loggedInAuthJson)
             const handler = await getHandler()
             await handler("refresh", contextMock)
 
