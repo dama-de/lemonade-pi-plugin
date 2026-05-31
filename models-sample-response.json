@@ -1,0 +1,108 @@
+{
+  "data": [
+    {
+      "checkpoint": "unsloth/Qwen3.5-0.8B-GGUF:Qwen3.5-0.8B-UD-Q4_K_XL.gguf",
+      "checkpoints": {
+        "main": "unsloth/Qwen3.5-0.8B-GGUF:Qwen3.5-0.8B-UD-Q4_K_XL.gguf",
+        "mmproj": "unsloth/Qwen3.5-0.8B-GGUF:mmproj-F16.gguf"
+      },
+      "components": [],
+      "created": 1234567890,
+      "downloaded": true,
+      "id": "Qwen3.5-0.8B-GGUF",
+      "labels": [
+        "vision",
+        "tool-calling"
+      ],
+      "max_context_window": 262144,
+      "object": "model",
+      "owned_by": "lemonade",
+      "recipe": "llamacpp",
+      "recipe_options": {
+        "ctx_size": 32000,
+        "llamacpp_args": "--temp 0.6 --top-p 0.95 --top-k 20 --min-p 0.00 --presence-penalty 0.0 --repeat-penalty 1.0",
+        "merge_args": true
+      },
+      "size": 0.764,
+      "suggested": true
+    },
+    {
+      "checkpoint": "unsloth/Qwen3.6-27B-MTP-GGUF:Qwen3.6-27B-UD-Q4_K_XL.gguf",
+      "checkpoints": {
+        "main": "unsloth/Qwen3.6-27B-MTP-GGUF:Qwen3.6-27B-UD-Q4_K_XL.gguf",
+        "mmproj": "unsloth/Qwen3.6-27B-MTP-GGUF:mmproj-F16.gguf"
+      },
+      "components": [],
+      "created": 1234567890,
+      "downloaded": true,
+      "id": "Qwen3.6-27B-MTP-GGUF",
+      "labels": [
+        "vision",
+        "tool-calling",
+        "mtp",
+        "hot"
+      ],
+      "object": "model",
+      "owned_by": "lemonade",
+      "recipe": "llamacpp",
+      "recipe_options": {},
+      "size": 18.8,
+      "suggested": true
+    },
+    {
+      "checkpoint": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q6_K_XL",
+      "checkpoints": {
+        "main": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q6_K_XL",
+        "mmproj": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF:mmproj-BF16.gguf"
+      },
+      "components": [],
+      "created": 1234567890,
+      "downloaded": true,
+      "id": "Qwen3.6-35B-A3B-MTP-GGUF-UD-Q6_K_XL",
+      "labels": [
+        "custom",
+        "vision",
+        "tool-calling"
+      ],
+      "max_context_window": 262144,
+      "object": "model",
+      "owned_by": "lemonade",
+      "recipe": "llamacpp",
+      "recipe_options": {
+        "ctx_size": 128000,
+        "llamacpp_args": "--temp 0.6 --presence-penalty 0.0 --top-p 0.95 --top-k 20 --min-p 0.00 --spec-type draft-mtp --spec-draft-n-max 2 --chat-template-kwargs '{\"preserve_thinking\":true}'",
+        "merge_args": true
+      },
+      "size": 31.2,
+      "suggested": true
+    },
+    {
+      "checkpoint": "unsloth/gemma-4-26B-A4B-it-GGUF:UD-Q5_K_XL",
+      "checkpoints": {
+        "main": "unsloth/gemma-4-26B-A4B-it-GGUF:UD-Q5_K_XL",
+        "mmproj": "unsloth/gemma-4-26B-A4B-it-GGUF:mmproj-BF16.gguf"
+      },
+      "components": [],
+      "created": 1234567890,
+      "downloaded": true,
+      "id": "gemma-4-26B-A4B-it-GGUF-UD-Q5_K_XL",
+      "labels": [
+        "custom",
+        "vision",
+        "tool-calling"
+      ],
+      "max_context_window": 262144,
+      "object": "model",
+      "owned_by": "lemonade",
+      "recipe": "llamacpp",
+      "recipe_options": {
+        "ctx_size": 64000,
+        "llamacpp_args": "--temp 1.0 --top-p 0.95 --top-k 64",
+        "merge_args": true
+      },
+      "size": 20.9,
+      "suggested": true
+    }
+  ],
+  "object": "list"
+}

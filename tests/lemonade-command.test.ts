@@ -79,6 +79,7 @@ describe("/lemonade command", () => {
     describe("status", () => {
         it("displays server health info when the server is reachable", async () => {
             nock("http://localhost:13305")
+                .persist()
                 .get("/api/v1/health")
                 .reply(200, {
                     status: "ok",
@@ -105,6 +106,7 @@ describe("/lemonade command", () => {
 
         it("shows an error when the server is unreachable", async () => {
             nock("http://localhost:13305")
+                .persist()
                 .get("/api/v1/health")
                 .reply(503, {error: "Server starting up"})
 
@@ -120,6 +122,7 @@ describe("/lemonade command", () => {
 
         it("shows an error when the server returns a non-200 status", async () => {
             nock("http://localhost:13305")
+                .persist()
                 .get("/api/v1/health")
                 .reply(500, {error: "Internal error"})
 
@@ -131,6 +134,78 @@ describe("/lemonade command", () => {
             const [message, level] = contextMock.ui.notify.mock.calls[0]!
             expect(level).toBe("error")
             expect(message).toContain("Cannot reach")
+        })
+    })
+
+    describe("models", () => {
+        it("displays models with details when the server returns a list", async () => {
+            nock("http://localhost:13305")
+                .persist()
+                .get("/api/v1/models")
+                .reply(200, {
+                    data: [
+                        {
+                            id: "Qwen2.5-7B-Instruct",
+                            name: "Qwen2.5-7B-Instruct",
+                            loaded: true,
+                            size: 14858844160,
+                            recipe: "qwen2.5",
+                            backend: "llama.cpp",
+                        },
+                        {
+                            id: "Llama-3.1-8B-Instruct",
+                            name: "Llama-3.1-8B-Instruct",
+                            loaded: false,
+                            size: 15000000000,
+                            recipe: "llama3.1",
+                            backend: "llama.cpp",
+                        },
+                    ],
+                })
+
+            mockAuthJson()
+            const handler = await getHandler()
+            await handler("models", contextMock)
+
+            expect(contextMock.ui.notify).toHaveBeenCalledTimes(1)
+            const [message, level] = contextMock.ui.notify.mock.calls[0]!
+            expect(level).toBe("info")
+            expect(message).toContain("2 model(s)")
+            expect(message).toContain("● Qwen2.5-7B-Instruct (13.8 GB)")
+            expect(message).toContain("○ Llama-3.1-8B-Instruct (14 GB)")
+            expect(message).toContain("recipe: qwen2.5, backend: llama.cpp")
+        })
+
+        it("shows a warning when no models are found", async () => {
+            nock("http://localhost:13305")
+                .persist()
+                .get("/api/v1/models")
+                .reply(200, {data: []})
+
+            mockAuthJson()
+            const handler = await getHandler()
+            await handler("models", contextMock)
+
+            expect(contextMock.ui.notify).toHaveBeenCalledTimes(1)
+            const [message, level] = contextMock.ui.notify.mock.calls[0]!
+            expect(level).toBe("warning")
+            expect(message).toBe("No models found.")
+        })
+
+        it("shows an error when the server is unreachable", async () => {
+            nock("http://localhost:13305")
+                .persist()
+                .get("/api/v1/models")
+                .reply(503, {error: "Server starting up"})
+
+            mockAuthJson()
+            const handler = await getHandler()
+            await handler("models", contextMock)
+
+            expect(contextMock.ui.notify).toHaveBeenCalledTimes(1)
+            const [message, level] = contextMock.ui.notify.mock.calls[0]!
+            expect(level).toBe("warning")
+            expect(message).toBe("No models found.")
         })
     })
 })
