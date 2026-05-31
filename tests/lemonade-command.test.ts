@@ -6,24 +6,12 @@ import type {ExtensionAPI, ExtensionCommandContext} from "@earendil-works/pi-cod
 
 import lemonadeProvider from "../extensions/index"
 
-// Mock both os and fs at module scope so they're hoisted before the extension loads
-vi.mock("node:os", () => ({
-    default: {
-        homedir: () => "/home/testuser",
-    },
-}))
-
-vi.mock("node:fs", () => ({
-    promises: vol.promises,
-}))
-
 describe("/lemonade command", () => {
     let contextMock: ReturnType<typeof mockDeep<ExtensionCommandContext>>
 
     beforeEach(async () => {
         vi.restoreAllMocks()
         nock.cleanAll()
-        vol.reset()
 
         contextMock = mockDeep<ExtensionCommandContext>()
     })
