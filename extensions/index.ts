@@ -235,7 +235,7 @@ function lemonadeCommand(pi: ExtensionAPI, oauthBlock: Omit<OAuthProviderInterfa
               `Lemonade v${h.version} @ ${baseUrl}\n` +
               `Status: ${h.status}\n` +
               `Loaded: ${h.model_loaded ?? "(none)"}\n` +
-              `All loaded: ${(h.all_models_loaded ?? []).join(", ") || "(none)"}` +
+              `All loaded: ${(h.all_models_loaded ?? []).map((m) => m.model_name).join(", ") || "(none)"}` +
               (h.websocket_port ? `\nWebSocket port: ${h.websocket_port}` : ""),
               "info",
           )

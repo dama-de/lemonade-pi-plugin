@@ -74,7 +74,7 @@ describe("/lemonade command", () => {
                     status: "ok",
                     version: "0.5.0",
                     model_loaded: "Qwen2.5-7B-Instruct",
-                    all_models_loaded: ["Qwen2.5-7B-Instruct"],
+                    all_models_loaded: [{model_name: "Qwen2.5-7B-Instruct"}],
                     websocket_port: 13306,
                 })
 

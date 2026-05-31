@@ -31,7 +31,7 @@ interface LemonadeHealth {
     status: string;
     version: string;
     model_loaded: string | null;
-    all_models_loaded?: string[] | null;
+    all_models_loaded?: Array<{ model_name: string }> | null;
     websocket_port?: number;
 }
 
