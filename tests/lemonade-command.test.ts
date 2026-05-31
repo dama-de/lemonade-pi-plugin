@@ -56,77 +56,81 @@ describe("/lemonade command", () => {
         })
     }
 
-    it("shows help when called with no arguments", async () => {
-        const handler = await getHandler()
-        await handler("", contextMock)
+    describe("no subcommand (help)", () => {
+        it("shows help when called with no arguments", async () => {
+            const handler = await getHandler()
+            await handler("", contextMock)
 
-        expect(contextMock.ui.notify).toHaveBeenCalledTimes(1)
-        const [message, level] = contextMock.ui.notify.mock.calls[0]!
-        expect(level).toBe("info")
-        expect(message).toContain("/lemonade <command>")
-        expect(message).toContain("status")
-        expect(message).toContain("models")
-        expect(message).toContain("load")
-        expect(message).toContain("unload")
-        expect(message).toContain("pull")
-        expect(message).toContain("delete")
-        expect(message).toContain("refresh")
-        expect(message).toContain("discover")
+            expect(contextMock.ui.notify).toHaveBeenCalledTimes(1)
+            const [message, level] = contextMock.ui.notify.mock.calls[0]!
+            expect(level).toBe("info")
+            expect(message).toContain("/lemonade <command>")
+            expect(message).toContain("status")
+            expect(message).toContain("models")
+            expect(message).toContain("load")
+            expect(message).toContain("unload")
+            expect(message).toContain("pull")
+            expect(message).toContain("delete")
+            expect(message).toContain("refresh")
+            expect(message).toContain("discover")
+        })
     })
 
-    it("displays server health info when the server is reachable", async () => {
-        nock("http://localhost:13305")
-            .get("/api/v1/health")
-            .reply(200, {
-                status: "ok",
-                version: "0.5.0",
-                model_loaded: "Qwen2.5-7B-Instruct",
-                all_models_loaded: ["Qwen2.5-7B-Instruct"],
-                websocket_port: 13306,
-            })
+    describe("status", () => {
+        it("displays server health info when the server is reachable", async () => {
+            nock("http://localhost:13305")
+                .get("/api/v1/health")
+                .reply(200, {
+                    status: "ok",
+                    version: "0.5.0",
+                    model_loaded: "Qwen2.5-7B-Instruct",
+                    all_models_loaded: ["Qwen2.5-7B-Instruct"],
+                    websocket_port: 13306,
+                })
 
-        mockAuthJson()
-        const handler = await getHandler()
-        await handler("status", contextMock)
+            mockAuthJson()
+            const handler = await getHandler()
+            await handler("status", contextMock)
 
-        expect(contextMock.ui.notify).toHaveBeenCalledTimes(1)
-        const [message, level] = contextMock.ui.notify.mock.calls[0]!
-        expect(level).toBe("info")
-        expect(message).toContain("Lemonade v0.5.0")
-        expect(message).toContain("http://localhost:13305")
-        expect(message).toContain("Status: ok")
-        expect(message).toContain("Loaded: Qwen2.5-7B-Instruct")
-        expect(message).toContain("All loaded: Qwen2.5-7B-Instruct")
-        expect(message).toContain("WebSocket port: 13306")
-    })
+            expect(contextMock.ui.notify).toHaveBeenCalledTimes(1)
+            const [message, level] = contextMock.ui.notify.mock.calls[0]!
+            expect(level).toBe("info")
+            expect(message).toContain("Lemonade v0.5.0")
+            expect(message).toContain("http://localhost:13305")
+            expect(message).toContain("Status: ok")
+            expect(message).toContain("Loaded: Qwen2.5-7B-Instruct")
+            expect(message).toContain("All loaded: Qwen2.5-7B-Instruct")
+            expect(message).toContain("WebSocket port: 13306")
+        })
 
-    it("shows an error when the server is unreachable", async () => {
-        nock("http://localhost:13305")
-            .get("/api/v1/health")
-            .reply(503, {error: "Server starting up"})
+        it("shows an error when the server is unreachable", async () => {
+            nock("http://localhost:13305")
+                .get("/api/v1/health")
+                .reply(503, {error: "Server starting up"})
 
-        mockAuthJson()
-        const handler = await getHandler()
-        await handler("status", contextMock)
+            mockAuthJson()
+            const handler = await getHandler()
+            await handler("status", contextMock)
 
-        expect(contextMock.ui.notify).toHaveBeenCalledTimes(1)
-        const [message, level] = contextMock.ui.notify.mock.calls[0]!
-        expect(level).toBe("error")
-        expect(message).toContain("Cannot reach")
-    })
+            expect(contextMock.ui.notify).toHaveBeenCalledTimes(1)
+            const [message, level] = contextMock.ui.notify.mock.calls[0]!
+            expect(level).toBe("error")
+            expect(message).toContain("Cannot reach")
+        })
 
-    it("shows an error when the server returns a non-200 status", async () => {
-        nock("http://localhost:13305")
-            .get("/api/v1/health")
-            .reply(500, {error: "Internal error"})
+        it("shows an error when the server returns a non-200 status", async () => {
+            nock("http://localhost:13305")
+                .get("/api/v1/health")
+                .reply(500, {error: "Internal error"})
 
-        mockAuthJson()
-        const handler = await getHandler()
-        await handler("status", contextMock)
+            mockAuthJson()
+            const handler = await getHandler()
+            await handler("status", contextMock)
 
-        expect(contextMock.ui.notify).toHaveBeenCalledTimes(1)
-        const [message, level] = contextMock.ui.notify.mock.calls[0]!
-        expect(level).toBe("error")
-        expect(message).toContain("Cannot reach")
+            expect(contextMock.ui.notify).toHaveBeenCalledTimes(1)
+            const [message, level] = contextMock.ui.notify.mock.calls[0]!
+            expect(level).toBe("error")
+            expect(message).toContain("Cannot reach")
+        })
     })
 })
