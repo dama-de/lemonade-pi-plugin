@@ -5,6 +5,7 @@ import nock from "nock"
 import type {ExtensionAPI, ExtensionCommandContext} from "@earendil-works/pi-coding-agent"
 
 import lemonadeProvider from "../extensions/index"
+import modelsSampleResponse from "./models-sample-response.json"
 
 describe("/lemonade command", () => {
     let contextMock: ReturnType<typeof mockDeep<ExtensionCommandContext>>
@@ -130,26 +131,7 @@ describe("/lemonade command", () => {
             nock("http://localhost:13305")
                 .persist()
                 .get("/api/v1/models")
-                .reply(200, {
-                    data: [
-                        {
-                            id: "Qwen2.5-7B-Instruct",
-                            name: "Qwen2.5-7B-Instruct",
-                            loaded: true,
-                            size: 14858844160,
-                            recipe: "qwen2.5",
-                            backend: "llama.cpp",
-                        },
-                        {
-                            id: "Llama-3.1-8B-Instruct",
-                            name: "Llama-3.1-8B-Instruct",
-                            loaded: false,
-                            size: 15000000000,
-                            recipe: "llama3.1",
-                            backend: "llama.cpp",
-                        },
-                    ],
-                })
+                .reply(200, modelsSampleResponse)
 
             mockAuthJson()
             const handler = await getHandler()
@@ -158,10 +140,13 @@ describe("/lemonade command", () => {
             expect(contextMock.ui.notify).toHaveBeenCalledTimes(1)
             const [message, level] = contextMock.ui.notify.mock.calls[0]!
             expect(level).toBe("info")
-            expect(message).toContain("2 model(s)")
-            expect(message).toContain("● Qwen2.5-7B-Instruct (13.8 GB)")
-            expect(message).toContain("○ Llama-3.1-8B-Instruct (14 GB)")
-            expect(message).toContain("recipe: qwen2.5, backend: llama.cpp")
+            expect(message).toContain("4 model(s)")
+            expect(message).toContain("● unsloth/Qwen3.5-0.8B-GGUF:Qwen3.5-0.8B-UD-Q4_K_XL.gguf (782 MB)")
+            expect(message).toContain("● unsloth/Qwen3.6-27B-MTP-GGUF:Qwen3.6-27B-UD-Q4_K_XL.gguf (18.8 GB)")
+            expect(message).toContain("● unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q6_K_XL (31.2 GB)")
+            expect(message).toContain("● unsloth/gemma-4-26B-A4B-it-GGUF:UD-Q5_K_XL (20.9 GB)")
+            expect(message).toContain("labels: vision, tool-calling")
+            expect(message).toContain("recipe: llamacpp")
         })
 
         it("shows a warning when no models are found", async () => {

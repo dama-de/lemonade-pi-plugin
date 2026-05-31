@@ -1,6 +1,7 @@
 import {beforeEach, describe, expect, it, vi} from "vitest"
 import {mockDeep} from "vitest-mock-extended"
 import type {ExtensionAPI} from "@earendil-works/pi-coding-agent"
+
 import lemonadeProvider from "../extensions/index"
 
 describe("extension registration", () => {

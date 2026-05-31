@@ -44,13 +44,23 @@ interface LemonadeHealth {
 
 interface LemonadeModelInfo {
   id: string;
-  name?: string;
-  category?: string;
-  backend?: string;
+  created?: number;
+  object?: string;
+  owned_by?: string;
+  checkpoint?: string;
   recipe?: string;
-  loaded?: boolean;
-  size?: number;
-  config?: Record<string, unknown>;
+  size?: number; // GB
+  max_context_window?: number;
+  downloaded?: boolean;
+  suggested?: boolean;
+  labels?: string[];
+  recipe_options?: Record<string, unknown>;
+  image_defaults?: {
+    steps?: number;
+    cfg_scale?: number;
+    width?: number;
+    height?: number;
+  };
 }
 
 interface CredsPayload {
@@ -234,26 +244,24 @@ async function fetchModels(baseUrl: string, apiKey?: string): Promise<LemonadeMo
 
 // ─── Provider model mapping ─────────────────────────────────────────────────
 
-function isReasoningModel(recipe: string | undefined): boolean {
+function isReasoningModel(m: LemonadeModelInfo): boolean {
+  if (m.labels?.includes("reasoning")) return true
+  const recipe = m.recipe?.toLowerCase()
   if (!recipe) return false
-  const r = recipe.toLowerCase()
-  return ["qwq", "deepseek-r1", "r1", "o1", "o3", "think"].some((t) => r.includes(t))
+  return ["qwq", "deepseek-r1", "r1", "o1", "o3", "think"].some((t) => recipe.includes(t))
 }
 
 function mapToProviderModel(m: LemonadeModelInfo) {
   const input: ("text" | "image")[] = ["text"]
-  if (m.category === "image" || (m.backend ?? "").toLowerCase().includes("sd")) {
+  if (m.labels?.includes("image")) {
     input.push("image")
   }
-  const cfg = m.config ?? {}
-  const contextWindow =
-      (cfg["context_window"] as number) ?? (cfg["context_len"] as number) ?? 128000
-  const maxTokens =
-      (cfg["max_new_tokens"] as number) ?? (cfg["max_tokens"] as number) ?? 4096
+  const contextWindow = m.max_context_window ?? 128000
+  const maxTokens = 4096
   return {
     id: m.id,
-    name: m.name || m.id,
-    reasoning: isReasoningModel(m.recipe),
+    name: m.checkpoint || m.id,
+    reasoning: isReasoningModel(m),
     input,
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
     contextWindow,
@@ -377,12 +385,13 @@ async function oauthLogin(
 
 // ─── /lemonade admin command ────────────────────────────────────────────────
 
-function formatBytes(bytes: number | undefined): string {
-  if (!bytes || bytes <= 0) return "—"
-  const k = 1024
-  const sizes = ["B", "KB", "MB", "GB", "TB"]
-  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1)
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
+function formatSizeGB(gb: number | undefined): string {
+  if (!gb || gb <= 0) return "—"
+  if (gb < 1) {
+    const mb = Math.round(gb * 1024)
+    return `${mb} MB`
+  }
+  return `${parseFloat(gb.toFixed(1))} GB`
 }
 
 /**
@@ -492,11 +501,14 @@ function lemonadeCommand(pi: ExtensionAPI, oauthBlock: Omit<OAuthProviderInterfa
           }
           let out = `${models.length} model(s):\n`
           for (const m of models) {
-            const status = m.loaded ? "●" : "○"
-            const size = m.size ? ` (${formatBytes(m.size)})` : ""
-            out += `  ${status} ${m.name || m.id}${size}\n`
+            const status = m.downloaded ? "●" : "○"
+            const size = m.size ? ` (${formatSizeGB(m.size)})` : ""
+            out += `  ${status} ${m.checkpoint || m.id}${size}\n`
+            if (m.labels && m.labels.length > 0) {
+              out += `      labels: ${m.labels.join(", ")}\n`
+            }
             if (m.recipe) {
-              out += `      recipe: ${m.recipe}, backend: ${m.backend ?? "—"}\n`
+              out += `      recipe: ${m.recipe}\n`
             }
           }
           ctx.ui.notify(out, "info")
