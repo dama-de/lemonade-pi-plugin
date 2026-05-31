@@ -12,7 +12,7 @@
 import {promises as fs} from "node:fs"
 import os from "node:os"
 import path from "node:path"
-import type {ExtensionAPI, ExtensionCommandContext} from "@earendil-works/pi-coding-agent"
+import type {ExtensionAPI, ExtensionCommandContext, ProviderConfig} from "@earendil-works/pi-coding-agent"
 import type {OAuthCredentials, OAuthLoginCallbacks, OAuthProviderInterface} from "@earendil-works/pi-ai"
 
 import lemonade, {type CredsPayload, type ProviderModel} from "./lemonade"
@@ -20,15 +20,6 @@ import lemonade, {type CredsPayload, type ProviderModel} from "./lemonade"
 const PROVIDER_ID = "lemonade"
 const PROVIDER_LABEL = "Lemonade"
 
-
-interface ProviderConfig {
-  name: string;
-  baseUrl: string;
-  api: string;
-  models: ProviderModel[];
-  oauth: Omit<OAuthProviderInterface, "id">;
-  headers?: Record<string, string>;
-}
 
 function buildProviderConfig(
     baseUrl: string,
