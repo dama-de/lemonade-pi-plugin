@@ -15,22 +15,22 @@
  * Admin commands live under /lemonade (status, models, load, pull, etc.).
  */
 
-import dgram from "node:dgram";
-import {promises as fs} from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import type {ExtensionAPI, ExtensionCommandContext} from "@earendil-works/pi-coding-agent";
-import type {OAuthCredentials, OAuthLoginCallbacks} from "@earendil-works/pi-ai";
+import dgram from "node:dgram"
+import {promises as fs} from "node:fs"
+import os from "node:os"
+import path from "node:path"
+import type {ExtensionAPI, ExtensionCommandContext} from "@earendil-works/pi-coding-agent"
+import type {OAuthCredentials, OAuthLoginCallbacks} from "@earendil-works/pi-ai"
 
-const PROVIDER_ID = "lemonade";
-const PROVIDER_LABEL = "Lemonade";
-const BEACON_PORT = 13305;
+const PROVIDER_ID = "lemonade"
+const PROVIDER_LABEL = "Lemonade"
+const BEACON_PORT = 13305
 // Lemonade's default HTTP port is 13305 (same port as the UDP beacon, but TCP).
 // Listed first so the local-fallback scan finds it immediately. Other ports
 // covered for users running a custom --port.
-const HTTP_FALLBACK_PORTS = [13305, 8000, 1234, 9000, 8080];
-const DEFAULT_HTTP_URL = "http://localhost:13305";
-const CREDS_TTL_MS = 24 * 60 * 60 * 1000;
+const HTTP_FALLBACK_PORTS = [13305, 8000, 1234, 9000, 8080]
+const DEFAULT_HTTP_URL = "http://localhost:13305"
+const CREDS_TTL_MS = 24 * 60 * 60 * 1000
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -71,30 +71,30 @@ function encodeCreds(payload: CredsPayload): OAuthCredentials {
     refresh: JSON.stringify(payload),
     access: payload.apiKey,
     expires: Date.now() + CREDS_TTL_MS,
-  };
+  }
 }
 
 function decodeCreds(creds: OAuthCredentials): CredsPayload {
   try {
-    const parsed = JSON.parse(creds.refresh ?? "");
+    const parsed = JSON.parse(creds.refresh ?? "")
     return {
       baseUrl: typeof parsed.baseUrl === "string" ? parsed.baseUrl : "",
       apiKey: typeof parsed.apiKey === "string" ? parsed.apiKey : (creds.access ?? ""),
       serverName: typeof parsed.serverName === "string" ? parsed.serverName : "Lemonade",
-    };
+    }
   } catch {
-    return { baseUrl: "", apiKey: creds.access ?? "", serverName: "Lemonade" };
+    return {baseUrl: "", apiKey: creds.access ?? "", serverName: "Lemonade"}
   }
 }
 
 // ─── URL helpers ────────────────────────────────────────────────────────────
 
 function buildBaseUrl(raw: string): string {
-  let url = (raw ?? "").trim();
-  if (!url) return "";
-  url = url.replace(/\/+$/, "");
+  let url = (raw ?? "").trim()
+  if (!url) return ""
+  url = url.replace(/\/+$/, "")
   if (!/^https?:\/\//i.test(url)) {
-    url = `http://${url}`;
+    url = `http://${url}`
   }
   // Strip any path the user (or the beacon) appended. Order matters — strip
   // the most specific prefix first.
@@ -103,18 +103,18 @@ function buildBaseUrl(raw: string): string {
   //   http://host:port/v1       → http://host:port (user pasted from OpenAI URL)
   //   http://host:port/api      → http://host:port
   for (const re of [/\/api\/v\d+\/?$/i, /\/v\d+\/?$/i, /\/api\/?$/i]) {
-    url = url.replace(re, "");
+    url = url.replace(re, "")
   }
-  return url.replace(/\/+$/, "");
+  return url.replace(/\/+$/, "")
 }
 
 function authHeaders(apiKey?: string): Record<string, string> {
   const h: Record<string, string> = {
     "Content-Type": "application/json",
     Accept: "application/json",
-  };
-  if (apiKey) h["Authorization"] = `Bearer ${apiKey}`;
-  return h;
+  }
+  if (apiKey) h["Authorization"] = `Bearer ${apiKey}`
+  return h
 }
 
 // ─── UDP beacon discovery ───────────────────────────────────────────────────
@@ -129,25 +129,25 @@ function authHeaders(apiKey?: string): Record<string, string> {
  */
 function discoverViaBeacon(timeoutMs: number, localOnly: boolean): Promise<BeaconResult[]> {
   return new Promise((resolve) => {
-    const found = new Map<string, BeaconResult>();
-    let sock: ReturnType<typeof dgram.createSocket> | null = null;
-    let timer: ReturnType<typeof setTimeout> | null = null;
+    const found = new Map<string, BeaconResult>()
+    let sock: ReturnType<typeof dgram.createSocket> | null = null
+    let timer: ReturnType<typeof setTimeout> | null = null
 
     const finish = () => {
       if (timer) {
-        clearTimeout(timer);
-        timer = null;
+        clearTimeout(timer)
+        timer = null
       }
       if (sock) {
         try {
-          sock.close();
+          sock.close()
         } catch {
           // ignore
         }
-        sock = null;
+        sock = null
       }
-      resolve(Array.from(found.values()));
-    };
+      resolve(Array.from(found.values()))
+    }
 
     try {
       // reuseAddr → SO_REUSEADDR; reusePort → SO_REUSEPORT (Node 18+).
@@ -158,49 +158,49 @@ function discoverViaBeacon(timeoutMs: number, localOnly: boolean): Promise<Beaco
         type: "udp4",
         reuseAddr: true,
         reusePort: true,
-      } as Parameters<typeof dgram.createSocket>[0]);
-      sock.on("error", finish);
+      } as Parameters<typeof dgram.createSocket>[0])
+      sock.on("error", finish)
       sock.on("message", (msg: Buffer, rinfo: { address: string }) => {
-        if (localOnly && rinfo.address !== "127.0.0.1") return;
+        if (localOnly && rinfo.address !== "127.0.0.1") return
         try {
-          const beacon = JSON.parse(msg.toString());
-          if (beacon?.service !== "lemonade") return;
-          const url = String(beacon.url ?? "");
-          const hostname = String(beacon.hostname ?? "unknown");
-          if (!url) return;
-          const baseUrl = buildBaseUrl(url);
+          const beacon = JSON.parse(msg.toString())
+          if (beacon?.service !== "lemonade") return
+          const url = String(beacon.url ?? "")
+          const hostname = String(beacon.hostname ?? "unknown")
+          if (!url) return
+          const baseUrl = buildBaseUrl(url)
           if (baseUrl && !found.has(baseUrl)) {
-            found.set(baseUrl, { hostname, baseUrl });
+            found.set(baseUrl, {hostname, baseUrl})
           }
         } catch {
           // not JSON / not ours
         }
-      });
-      sock.bind(BEACON_PORT);
+      })
+      sock.bind(BEACON_PORT)
     } catch {
-      finish();
-      return;
+      finish()
+      return
     }
 
-    timer = setTimeout(finish, timeoutMs);
-  });
+    timer = setTimeout(finish, timeoutMs)
+  })
 }
 
 async function discoverViaHttp(): Promise<BeaconResult[]> {
   const checks = await Promise.all(
     HTTP_FALLBACK_PORTS.map(async (port) => {
-      const baseUrl = `http://localhost:${port}`;
-      const health = await checkHealth(baseUrl);
-      return health ? { hostname: `localhost:${port}`, baseUrl } : null;
+      const baseUrl = `http://localhost:${port}`
+      const health = await checkHealth(baseUrl)
+      return health ? {hostname: `localhost:${port}`, baseUrl} : null
     }),
-  );
-  return checks.filter((r): r is BeaconResult => r !== null);
+  )
+  return checks.filter((r): r is BeaconResult => r !== null)
 }
 
 async function discoverServers(timeoutMs = 2500): Promise<BeaconResult[]> {
-  const beacons = await discoverViaBeacon(timeoutMs, /*localOnly=*/ false);
-  if (beacons.length > 0) return beacons;
-  return await discoverViaHttp();
+  const beacons = await discoverViaBeacon(timeoutMs, /*localOnly=*/ false)
+  if (beacons.length > 0) return beacons
+  return await discoverViaHttp()
 }
 
 // ─── HTTP calls ─────────────────────────────────────────────────────────────
@@ -210,11 +210,11 @@ async function checkHealth(baseUrl: string, apiKey?: string): Promise<LemonadeHe
     const res = await fetch(`${baseUrl}/api/v1/health`, {
       headers: authHeaders(apiKey),
       signal: AbortSignal.timeout(3000),
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as LemonadeHealth;
+    })
+    if (!res.ok) return null
+    return (await res.json()) as LemonadeHealth
   } catch {
-    return null;
+    return null
   }
 }
 
@@ -223,33 +223,33 @@ async function fetchModels(baseUrl: string, apiKey?: string): Promise<LemonadeMo
     const res = await fetch(`${baseUrl}/api/v1/models`, {
       headers: authHeaders(apiKey),
       signal: AbortSignal.timeout(10000),
-    });
-    if (!res.ok) return [];
-    const data = (await res.json()) as { data?: LemonadeModelInfo[] };
-    return Array.isArray(data?.data) ? data.data : [];
+    })
+    if (!res.ok) return []
+    const data = (await res.json()) as { data?: LemonadeModelInfo[] }
+    return Array.isArray(data?.data) ? data.data : []
   } catch {
-    return [];
+    return []
   }
 }
 
 // ─── Provider model mapping ─────────────────────────────────────────────────
 
 function isReasoningModel(recipe: string | undefined): boolean {
-  if (!recipe) return false;
-  const r = recipe.toLowerCase();
-  return ["qwq", "deepseek-r1", "r1", "o1", "o3", "think"].some((t) => r.includes(t));
+  if (!recipe) return false
+  const r = recipe.toLowerCase()
+  return ["qwq", "deepseek-r1", "r1", "o1", "o3", "think"].some((t) => r.includes(t))
 }
 
 function mapToProviderModel(m: LemonadeModelInfo) {
-  const input: ("text" | "image")[] = ["text"];
+  const input: ("text" | "image")[] = ["text"]
   if (m.category === "image" || (m.backend ?? "").toLowerCase().includes("sd")) {
-    input.push("image");
+    input.push("image")
   }
-  const cfg = m.config ?? {};
+  const cfg = m.config ?? {}
   const contextWindow =
-    (cfg["context_window"] as number) ?? (cfg["context_len"] as number) ?? 128000;
+      (cfg["context_window"] as number) ?? (cfg["context_len"] as number) ?? 128000
   const maxTokens =
-    (cfg["max_new_tokens"] as number) ?? (cfg["max_tokens"] as number) ?? 4096;
+      (cfg["max_new_tokens"] as number) ?? (cfg["max_tokens"] as number) ?? 4096
   return {
     id: m.id,
     name: m.name || m.id,
@@ -258,7 +258,7 @@ function mapToProviderModel(m: LemonadeModelInfo) {
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
     contextWindow,
     maxTokens,
-  };
+  }
 }
 
 // ─── Provider (re-)registration ─────────────────────────────────────────────
@@ -268,15 +268,15 @@ async function registerLemonadeProvider(
   payload: CredsPayload | null,
   oauthBlock: unknown,
 ): Promise<number> {
-  const baseUrl = payload?.baseUrl ?? "";
-  let providerModels: ReturnType<typeof mapToProviderModel>[] = [];
+  const baseUrl = payload?.baseUrl ?? ""
+  let providerModels: ReturnType<typeof mapToProviderModel>[] = []
   if (baseUrl) {
-    const raw = await fetchModels(baseUrl, payload?.apiKey);
-    providerModels = raw.map(mapToProviderModel);
+    const raw = await fetchModels(baseUrl, payload?.apiKey)
+    providerModels = raw.map(mapToProviderModel)
   }
 
   try {
-    pi.unregisterProvider(PROVIDER_ID);
+    pi.unregisterProvider(PROVIDER_ID)
   } catch {
     // not previously registered; ignore
   }
@@ -287,12 +287,12 @@ async function registerLemonadeProvider(
     api: "openai-completions",
     models: providerModels,
     oauth: oauthBlock,
-  };
-  if (payload?.apiKey) {
-    config.headers = { Authorization: `Bearer ${payload.apiKey}` };
   }
-  pi.registerProvider(PROVIDER_ID, config);
-  return providerModels.length;
+  if (payload?.apiKey) {
+    config.headers = {Authorization: `Bearer ${payload.apiKey}`}
+  }
+  pi.registerProvider(PROVIDER_ID, config)
+  return providerModels.length
 }
 
 // ─── OAuth login flow (runs when user picks "Lemonade" in /login) ───────────
@@ -302,87 +302,87 @@ async function oauthLogin(
   callbacks: OAuthLoginCallbacks,
   oauthBlock: unknown,
 ): Promise<OAuthCredentials> {
-  const discovered = await discoverServers(2500);
+  const discovered = await discoverServers(2500)
 
-  let baseUrl = "";
-  let serverName = "Lemonade";
+  let baseUrl = ""
+  let serverName = "Lemonade"
 
   if (discovered.length === 0) {
     const input = await callbacks.onPrompt({
       message:
         "No Lemonade server found via UDP beacon (port 13305) or local port scan.\n" +
         "Enter Lemonade server URL (press Enter for http://localhost:8000):",
-    });
-    const trimmed = input.trim();
-    baseUrl = trimmed ? buildBaseUrl(trimmed) : "http://localhost:8000";
+    })
+    const trimmed = input.trim()
+    baseUrl = trimmed ? buildBaseUrl(trimmed) : "http://localhost:8000"
   } else if (discovered.length === 1) {
-    const only = discovered[0];
+    const only = discovered[0]
     const confirm = await callbacks.onPrompt({
       message:
         `Found Lemonade server: ${only.hostname} at ${only.baseUrl}\n` +
         `Press Enter to use this, or type a different URL:`,
-    });
-    const trimmed = confirm.trim();
+    })
+    const trimmed = confirm.trim()
     if (trimmed) {
-      baseUrl = buildBaseUrl(trimmed);
-      serverName = "Lemonade";
+      baseUrl = buildBaseUrl(trimmed)
+      serverName = "Lemonade"
     } else {
-      baseUrl = only.baseUrl;
-      serverName = only.hostname;
+      baseUrl = only.baseUrl
+      serverName = only.hostname
     }
   } else {
-    let menu = `Found ${discovered.length} Lemonade servers:\n`;
+    let menu = `Found ${discovered.length} Lemonade servers:\n`
     discovered.forEach((d, i) => {
-      menu += `  [${i + 1}] ${d.hostname} — ${d.baseUrl}\n`;
-    });
-    menu += "Enter number to select, or type a custom URL:";
-    const choice = (await callbacks.onPrompt({ message: menu })).trim();
-    const num = parseInt(choice, 10);
+      menu += `  [${i + 1}] ${d.hostname} — ${d.baseUrl}\n`
+    })
+    menu += "Enter number to select, or type a custom URL:"
+    const choice = (await callbacks.onPrompt({message: menu})).trim()
+    const num = parseInt(choice, 10)
     if (!isNaN(num) && num >= 1 && num <= discovered.length) {
-      baseUrl = discovered[num - 1].baseUrl;
-      serverName = discovered[num - 1].hostname;
+      baseUrl = discovered[num - 1].baseUrl
+      serverName = discovered[num - 1].hostname
     } else if (choice) {
-      baseUrl = buildBaseUrl(choice);
-      serverName = "Lemonade";
+      baseUrl = buildBaseUrl(choice)
+      serverName = "Lemonade"
     } else {
-      baseUrl = discovered[0].baseUrl;
-      serverName = discovered[0].hostname;
+      baseUrl = discovered[0].baseUrl
+      serverName = discovered[0].hostname
     }
   }
 
   const apiKeyInput = await callbacks.onPrompt({
     message:
       "Enter API key (optional — press Enter to skip if your server doesn't require one):",
-  });
-  const apiKey = apiKeyInput.trim();
+  })
+  const apiKey = apiKeyInput.trim()
 
-  const health = await checkHealth(baseUrl, apiKey || undefined);
+  const health = await checkHealth(baseUrl, apiKey || undefined)
   if (!health) {
     throw new Error(
       `Cannot reach Lemonade at ${baseUrl}. Check that the server is running` +
         (apiKey ? " and that the API key is correct." : "") +
         ".",
-    );
+    )
   }
 
   const payload: CredsPayload = {
     baseUrl,
     apiKey,
     serverName: `${serverName} v${health.version}`,
-  };
-  await registerLemonadeProvider(pi, payload, oauthBlock);
+  }
+  await registerLemonadeProvider(pi, payload, oauthBlock)
 
-  return encodeCreds(payload);
+  return encodeCreds(payload)
 }
 
 // ─── /lemonade admin command ────────────────────────────────────────────────
 
 function formatBytes(bytes: number | undefined): string {
-  if (!bytes || bytes <= 0) return "—";
-  const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+  if (!bytes || bytes <= 0) return "—"
+  const k = 1024
+  const sizes = ["B", "KB", "MB", "GB", "TB"]
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1)
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
 }
 
 /**
@@ -392,36 +392,36 @@ function formatBytes(bytes: number | undefined): string {
  */
 async function readStoredPayload(): Promise<CredsPayload | null> {
   try {
-    const authPath = path.join(os.homedir(), ".pi", "agent", "auth.json");
-    const raw = await fs.readFile(authPath, "utf8");
-    const data = JSON.parse(raw);
+    const authPath = path.join(os.homedir(), ".pi", "agent", "auth.json")
+    const raw = await fs.readFile(authPath, "utf8")
+    const data = JSON.parse(raw)
     const candidates: unknown[] = [
       data?.[PROVIDER_ID],
       data?.providers?.[PROVIDER_ID],
       data?.oauth?.[PROVIDER_ID],
-    ];
+    ]
     for (const c of candidates) {
       if (
         c &&
         typeof c === "object" &&
         typeof (c as OAuthCredentials).refresh === "string"
       ) {
-        return decodeCreds(c as OAuthCredentials);
+        return decodeCreds(c as OAuthCredentials)
       }
     }
   } catch {
     // no auth.json yet, or unreadable
   }
-  return null;
+  return null
 }
 
 function lemonadeCommand(pi: ExtensionAPI, oauthBlock: any) {
   return {
     description: "Lemonade server administration (status, models, load/pull/delete)",
     handler: async (args: string, ctx: ExtensionCommandContext) => {
-      const parts = args.trim().split(/\s+/).filter(Boolean);
-      const cmd = (parts[0] ?? "").toLowerCase();
-      const rest = parts.slice(1);
+      const parts = args.trim().split(/\s+/).filter(Boolean)
+      const cmd = (parts[0] ?? "").toLowerCase()
+      const rest = parts.slice(1)
 
       if (cmd === "" || cmd === "help") {
         ctx.ui.notify(
@@ -435,42 +435,42 @@ function lemonadeCommand(pi: ExtensionAPI, oauthBlock: any) {
             "  refresh            — re-fetch model list and re-register provider\n" +
             "  discover           — UDP beacon + HTTP port scan",
             "info",
-        );
-        return;
+        )
+        return
       }
 
       if (cmd === "discover") {
-        ctx.ui.notify("Scanning UDP beacons (3s) + local port fallback…", "info");
-        const beacons = await discoverViaBeacon(3000, /*localOnly=*/ false);
-        const http = beacons.length === 0 ? await discoverViaHttp() : [];
-        const all = [...beacons, ...http];
+        ctx.ui.notify("Scanning UDP beacons (3s) + local port fallback…", "info")
+        const beacons = await discoverViaBeacon(3000, /*localOnly=*/ false)
+        const http = beacons.length === 0 ? await discoverViaHttp() : []
+        const all = [...beacons, ...http]
         if (all.length === 0) {
-          ctx.ui.notify("No Lemonade servers found.", "warning");
-          return;
+          ctx.ui.notify("No Lemonade servers found.", "warning")
+          return
         }
-        let msg = `Found ${all.length} server(s):\n`;
-        for (const s of all) msg += `  • ${s.hostname} — ${s.baseUrl}\n`;
-        ctx.ui.notify(msg, "info");
-        return;
+        let msg = `Found ${all.length} server(s):\n`
+        for (const s of all) msg += `  • ${s.hostname} — ${s.baseUrl}\n`
+        ctx.ui.notify(msg, "info")
+        return
       }
 
-      const payload = await readStoredPayload();
+      const payload = await readStoredPayload()
       if (!payload?.baseUrl) {
         ctx.ui.notify(
             "Not connected to Lemonade. Run /login and pick Lemonade.",
             "warning",
-        );
-        return;
+        )
+        return
       }
-      const baseUrl = payload.baseUrl;
-      const apiKey = payload.apiKey || undefined;
+      const baseUrl = payload.baseUrl
+      const apiKey = payload.apiKey || undefined
 
       switch (cmd) {
         case "status": {
-          const h = await checkHealth(baseUrl, apiKey);
+          const h = await checkHealth(baseUrl, apiKey)
           if (!h) {
-            ctx.ui.notify(`Cannot reach ${baseUrl}`, "error");
-            return;
+            ctx.ui.notify(`Cannot reach ${baseUrl}`, "error")
+            return
           }
           ctx.ui.notify(
               `Lemonade v${h.version} @ ${baseUrl}\n` +
@@ -479,99 +479,99 @@ function lemonadeCommand(pi: ExtensionAPI, oauthBlock: any) {
               `All loaded: ${(h.all_models_loaded ?? []).join(", ") || "(none)"}` +
               (h.websocket_port ? `\nWebSocket port: ${h.websocket_port}` : ""),
               "info",
-          );
-          return;
+          )
+          return
         }
 
         case "models":
         case "list": {
-          const models = await fetchModels(baseUrl, apiKey);
+          const models = await fetchModels(baseUrl, apiKey)
           if (models.length === 0) {
-            ctx.ui.notify("No models found.", "warning");
-            return;
+            ctx.ui.notify("No models found.", "warning")
+            return
           }
-          let out = `${models.length} model(s):\n`;
+          let out = `${models.length} model(s):\n`
           for (const m of models) {
-            const status = m.loaded ? "●" : "○";
-            const size = m.size ? ` (${formatBytes(m.size)})` : "";
-            out += `  ${status} ${m.name || m.id}${size}\n`;
+            const status = m.loaded ? "●" : "○"
+            const size = m.size ? ` (${formatBytes(m.size)})` : ""
+            out += `  ${status} ${m.name || m.id}${size}\n`
             if (m.recipe) {
-              out += `      recipe: ${m.recipe}, backend: ${m.backend ?? "—"}\n`;
+              out += `      recipe: ${m.recipe}, backend: ${m.backend ?? "—"}\n`
             }
           }
-          ctx.ui.notify(out, "info");
-          return;
+          ctx.ui.notify(out, "info")
+          return
         }
 
         case "load": {
-          const id = rest[0];
+          const id = rest[0]
           if (!id) {
-            ctx.ui.notify("Usage: /lemonade load <model_id>", "warning");
-            return;
+            ctx.ui.notify("Usage: /lemonade load <model_id>", "warning")
+            return
           }
-          ctx.ui.notify(`Loading ${id}…`, "info");
-          await postModelOp(ctx, `${baseUrl}/api/v1/load`, apiKey, {model_name: id}, "load");
-          return;
+          ctx.ui.notify(`Loading ${id}…`, "info")
+          await postModelOp(ctx, `${baseUrl}/api/v1/load`, apiKey, {model_name: id}, "load")
+          return
         }
 
         case "unload": {
-          const id = rest[0];
-          ctx.ui.notify(id ? `Unloading ${id}…` : "Unloading all models…", "info");
+          const id = rest[0]
+          ctx.ui.notify(id ? `Unloading ${id}…` : "Unloading all models…", "info")
           await postModelOp(
               ctx,
               `${baseUrl}/api/v1/unload`,
               apiKey,
               id ? {model_name: id} : {},
               "unload",
-          );
-          return;
+          )
+          return
         }
 
         case "pull": {
-          const id = rest[0];
+          const id = rest[0]
           if (!id) {
-            ctx.ui.notify("Usage: /lemonade pull <model_id>", "warning");
-            return;
+            ctx.ui.notify("Usage: /lemonade pull <model_id>", "warning")
+            return
           }
-          ctx.ui.notify(`Pulling ${id} (this may take a while)…`, "info");
+          ctx.ui.notify(`Pulling ${id} (this may take a while)…`, "info")
           await postModelOp(
               ctx,
               `${baseUrl}/api/v1/pull`,
               apiKey,
               {model_name: id},
               "pull",
-          );
-          return;
+          )
+          return
         }
 
         case "delete": {
-          const id = rest[0];
+          const id = rest[0]
           if (!id) {
-            ctx.ui.notify("Usage: /lemonade delete <model_id>", "warning");
-            return;
+            ctx.ui.notify("Usage: /lemonade delete <model_id>", "warning")
+            return
           }
-          ctx.ui.notify(`Deleting ${id} from disk…`, "info");
+          ctx.ui.notify(`Deleting ${id} from disk…`, "info")
           await postModelOp(
               ctx,
               `${baseUrl}/api/v1/delete`,
               apiKey,
               {model_name: id},
               "delete",
-          );
-          return;
+          )
+          return
         }
 
         case "refresh": {
-          const count = await registerLemonadeProvider(pi, payload, oauthBlock);
-          ctx.ui.notify(`Re-synced: ${count} models registered.`, "info");
-          return;
+          const count = await registerLemonadeProvider(pi, payload, oauthBlock)
+          ctx.ui.notify(`Re-synced: ${count} models registered.`, "info")
+          return
         }
 
         default:
-          ctx.ui.notify(`Unknown command: /lemonade ${cmd}\nType /lemonade help`, "warning");
+          ctx.ui.notify(`Unknown command: /lemonade ${cmd}\nType /lemonade help`, "warning")
       }
     },
-  };
+  }
 }
 
 async function postModelOp(
@@ -587,23 +587,25 @@ async function postModelOp(
       headers: authHeaders(apiKey),
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(60_000),
-    });
-    const data = await r.json().catch(() => ({}) as Record<string, unknown>);
+    })
+    const data = await r.json().catch(() => ({}) as Record<string, unknown>)
     if (!r.ok) {
       const msg =
         (data as { error?: { message?: string } | string })?.error &&
         typeof (data as { error?: { message?: string } }).error === "object"
           ? (data as { error: { message?: string } }).error.message
-          : ((data as { error?: string }).error ?? r.statusText);
-      ctx.ui.notify(`${label} failed: ${msg}`, "error");
-      return;
+            : ((data as { error?: string }).error ?? r.statusText)
+      ctx.ui.notify(`${label} failed: ${msg}`, "error")
+      return
     }
     const successMsg =
       (data as { message?: string }).message ??
-      `${label} succeeded${(data as { model_name?: string }).model_name ? `: ${(data as { model_name?: string }).model_name}` : ""}`;
-    ctx.ui.notify(successMsg, "info");
+        `${label} succeeded${(data as { model_name?: string }).model_name ? `: ${(data as {
+          model_name?: string
+        }).model_name}` : ""}`
+    ctx.ui.notify(successMsg, "info")
   } catch (e) {
-    ctx.ui.notify(`${label} failed: ${e instanceof Error ? e.message : String(e)}`, "error");
+    ctx.ui.notify(`${label} failed: ${e instanceof Error ? e.message : String(e)}`, "error")
   }
 }
 
@@ -614,21 +616,21 @@ export default async function lemonadeProvider(pi: ExtensionAPI) {
     name: PROVIDER_LABEL,
     login: (callbacks: OAuthLoginCallbacks): Promise<OAuthCredentials> => oauthLogin(pi, callbacks, oauthBlock),
     refreshToken: async (creds: OAuthCredentials): Promise<OAuthCredentials> => {
-      const payload = decodeCreds(creds);
+      const payload = decodeCreds(creds)
       if (payload.baseUrl) {
         try {
-          await registerLemonadeProvider(pi, payload, oauthBlock);
+          await registerLemonadeProvider(pi, payload, oauthBlock)
         } catch {
           // network blip — keep creds, retry on next refresh
         }
       }
-      return encodeCreds(payload);
+      return encodeCreds(payload)
     },
     getApiKey: (creds: OAuthCredentials): string => {
-      const payload = decodeCreds(creds);
-      return payload.apiKey || "";
+      const payload = decodeCreds(creds)
+      return payload.apiKey || ""
     },
-  };
+  }
 
   // Initial stub registration so "Lemonade" appears in Pi's /login selector
   // even before the user has connected.
@@ -638,18 +640,18 @@ export default async function lemonadeProvider(pi: ExtensionAPI) {
     api: "openai-completions",
     models: [],
     oauth: oauthBlock,
-  });
+  })
 
   // Best-effort: if Pi already has saved creds for us, re-register eagerly so
   // the model picker is populated without waiting for the next refresh tick.
-  const stored = await readStoredPayload();
+  const stored = await readStoredPayload()
   if (stored?.baseUrl) {
     try {
-      await registerLemonadeProvider(pi, stored, oauthBlock);
+      await registerLemonadeProvider(pi, stored, oauthBlock)
     } catch {
       // ignore — refreshToken will retry
     }
   }
 
-  pi.registerCommand("lemonade", lemonadeCommand(pi, oauthBlock));
+  pi.registerCommand("lemonade", lemonadeCommand(pi, oauthBlock))
 }
