@@ -38,6 +38,7 @@
   "devDependencies": {
     "@types/node": "^25.9.1",
     "@vitest/coverage-v8": "^4.1.7",
+    "memfs": "^4.57.3",
     "nock": "^14.0.15",
     "typescript": "^6.0.3",
     "vitest": "^4.1.7",
